@@ -151,29 +151,29 @@ def search():
 
     query = request.form.get("query", "").strip()
     if not query:
-        flash("Search query cannot be empty.", "danger")
-        return redirect(url_for("index"))
-
-    # Detect whether input is a list of keys or a JQL
-    # Simple heuristic: commas or single tokens that look like KEY-123 -> treat as keys
-    q = query
-    # Normalize ticket keys to uppercase (Jira is case-insensitive for keys but keep display uppercase)
-    # If it looks like a comma-separated list of keys
-    if "," in q:
-        keys = [k.strip().upper() for k in q.split(",") if k.strip()]
-        if keys and all(" " not in k for k in keys):
-            jql = f"issuekey in ({', '.join(keys)})"
-        else:
-            jql = q
+        # If query is empty, fetch all tickets assigned to current user
+        jql = "assignee = currentUser()"
     else:
-        # single token - detect single issue key pattern like ABC-123 (case-insensitive)
-        single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
-        if single_key_match:
-            key = single_key_match.group(1).upper()
-            jql = f"issuekey = {key}"
+        # Detect whether input is a list of keys or a JQL
+        # Simple heuristic: commas or single tokens that look like KEY-123 -> treat as keys
+        q = query
+        # Normalize ticket keys to uppercase (Jira is case-insensitive for keys but keep display uppercase)
+        # If it looks like a comma-separated list of keys
+        if "," in q:
+            keys = [k.strip().upper() for k in q.split(",") if k.strip()]
+            if keys and all(" " not in k for k in keys):
+                jql = f"issuekey in ({', '.join(keys)})"
+            else:
+                jql = q
         else:
-            # treat as JQL directly
-            jql = q
+            # single token - detect single issue key pattern like ABC-123 (case-insensitive)
+            single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
+            if single_key_match:
+                key = single_key_match.group(1).upper()
+                jql = f"issuekey = {key}"
+            else:
+                # treat as JQL directly
+                jql = q
 
     jira_url = session.get("jira_url")
     email = session.get("jira_email")

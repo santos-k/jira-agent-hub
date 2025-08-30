@@ -157,9 +157,76 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Table sorting for search results
+  function sortTableByColumn(table, column, asc = true) {
+    const dirModifier = asc ? 1 : -1;
+    const tBody = table.tBodies[0];
+    const rows = Array.from(tBody.querySelectorAll('tr'));
+
+    // Get the column index
+    const headerCells = Array.from(table.tHead.rows[0].cells);
+    let colIdx = headerCells.findIndex(th => th.dataset.column === column);
+    if (colIdx === -1) return;
+
+    // Sort rows
+    rows.sort((a, b) => {
+      const aText = a.cells[colIdx].textContent.trim().toLowerCase();
+      const bText = b.cells[colIdx].textContent.trim().toLowerCase();
+      // Numeric sort for Ticket ID if possible
+      if (column === 'key') {
+        // Try to extract number from KEY-123
+        const aNum = parseInt(aText.split('-')[1]);
+        const bNum = parseInt(bText.split('-')[1]);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return (aNum - bNum) * dirModifier;
+        }
+      }
+      if (aText < bText) return -1 * dirModifier;
+      if (aText > bText) return 1 * dirModifier;
+      return 0;
+    });
+
+    // Remove all rows
+    while (tBody.firstChild) {
+      tBody.removeChild(tBody.firstChild);
+    }
+    // Re-add sorted rows
+    tBody.append(...rows);
+  }
+
+  function updateSortIcons(table, column, asc) {
+    const headers = table.querySelectorAll('th.sortable');
+    headers.forEach(th => {
+      const icon = th.querySelector('.sort-icon');
+      if (!icon) return;
+      if (th.dataset.column === column) {
+        icon.textContent = asc ? '\u25B2' : '\u25BC'; // ▲ or ▼
+      } else {
+        icon.textContent = '';
+      }
+    });
+  }
+
+  function attachTableSortHandlers() {
+    const table = document.getElementById('resultsTable');
+    if (!table) return;
+    let currentSort = { column: null, asc: true };
+    table.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', function () {
+        const column = th.dataset.column;
+        if (!column) return;
+        const asc = currentSort.column === column ? !currentSort.asc : true;
+        sortTableByColumn(table, column, asc);
+        updateSortIcons(table, column, asc);
+        currentSort = { column, asc };
+      });
+    });
+  }
+
   // Attach on load
   attachSelectionHandlers();
   attachDeselectHandler();
+  attachTableSortHandlers();
 
   // If results are added dynamically later, you might re-run attachSelectionHandlers()
 
