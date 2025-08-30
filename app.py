@@ -221,29 +221,41 @@ def select_ticket():
         return jsonify({'success': False, 'message': 'No ticket key provided.'}), 400
     # Attempt to fetch description for the selected issue from Jira
     description_text = ''
+    description_html = ''
     try:
         jira_url = session.get('jira_url')
         email = session.get('jira_email')
         api_token = session.get('jira_api_token')
         if jira_url and email and api_token:
-            issue_api = f"{jira_url}/rest/api/3/issue/{key}?fields=description"
+            issue_api = f"{jira_url}/rest/api/3/issue/{key}?expand=renderedFields"
             r = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
             if r.status_code == 200:
                 issue_data = r.json()
+                # Get plain text (ADF) for fallback
                 desc = issue_data.get('fields', {}).get('description')
                 if isinstance(desc, str):
                     description_text = desc
                 else:
-                    # likely Atlassian Document Format (ADF)
                     description_text = adf_to_text(desc)
+                # Get HTML rendered description
+                rendered_desc = issue_data.get('renderedFields', {}).get('description')
+                if rendered_desc:
+                    description_html = rendered_desc
             else:
-                # API call failed; keep description empty but return success
                 description_text = ''
+                description_html = ''
     except Exception:
         description_text = ''
+        description_html = ''
 
     # store ticket info including description in session
-    session['selected_ticket'] = {'key': key, 'url': url, 'summary': summary, 'description': description_text}
+    session['selected_ticket'] = {
+        'key': key,
+        'url': url,
+        'summary': summary,
+        'description': description_text,
+        'description_html': description_html
+    }
     return jsonify({'success': True, 'selected': session['selected_ticket']})
 
 @app.route("/clear", methods=["POST"])

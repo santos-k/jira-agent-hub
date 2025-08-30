@@ -78,8 +78,14 @@ document.addEventListener('DOMContentLoaded', function () {
           if (selInfo) {
             const selected = data.selected || { key, url, summary };
             const infoHtml = `<div class="alert alert-info">Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</div>`;
-            if (selected.description) {
-              // insert description card and then set its text content to avoid HTML injection
+            if (selected.description_html) {
+              // Render HTML description from Jira
+              const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc"></div></div></div>`;
+              selInfo.innerHTML = infoHtml + descWrapper;
+              const descDiv = selInfo.querySelector('.adf-desc');
+              if (descDiv) descDiv.innerHTML = selected.description_html;
+            } else if (selected.description) {
+              // Fallback to plain text
               const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc" style="white-space: pre-wrap;"></div></div></div>`;
               selInfo.innerHTML = infoHtml + descWrapper;
               const descDiv = selInfo.querySelector('.adf-desc');
