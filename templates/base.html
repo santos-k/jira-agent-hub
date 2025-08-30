@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jira Agent Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Jira Agent Hub</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="/">Search</a>
+            </li>
+          </ul>
+
+          <div class="d-flex align-items-center">
+            {% if session.get('jira_connected') %}
+            <div class="dropdown">
+              <button class="btn btn-secondary rounded-circle user-avatar" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">{{ session.get('user_initials') }}</button>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li class="dropdown-item-text"><strong>{{ session.get('user_full_name') }}</strong></li>
+                <li class="dropdown-item-text">{{ session.get('user_email') }}</li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <form id="logoutForm" method="post" action="/logout">
+                    <button type="submit" class="dropdown-item">Logout</button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+            {% else %}
+            <button class="btn btn-primary" id="connectBtn" data-bs-toggle="modal" data-bs-target="#loginModal">Connect to Jira</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container my-4">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ msg }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+
+    {% include 'login_modal.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+  </body>
+</html>

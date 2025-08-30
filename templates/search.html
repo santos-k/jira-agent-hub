@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Search Jira Tickets</h5>
+    <form method="post" action="/search" id="searchForm" class="row g-2">
+      <div class="col-md-9">
+        <input type="text" name="query" id="queryInput" class="form-control" placeholder="Enter Jira ID (KEY-123), multiple IDs (KEY-1, KEY-2) or a JQL query" value="{{ session.get('last_query', '') }}" required>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Search</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('clearForm').submit();">Clear Results</button>
+      </div>
+    </form>
+    <form id="clearForm" method="post" action="/clear"></form>
+  </div>
+</div>
+
+<div class="mt-4">
+  {% if search_results %}
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Search Results</h5>
+        <div class="table-responsive">
+          <table class="table table-striped" id="resultsTable">
+            <thead>
+              <tr>
+                <th scope="col">Select</th>
+                <th scope="col">Ticket ID</th>
+                <th scope="col">Summary</th>
+                <th scope="col">Assignee</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% set selected = session.get('selected_ticket') %}
+              {% for r in search_results %}
+              <tr data-key="{{ r.key }}">
+                <td>
+                  <input type="radio" name="selected_ticket" value="{{ r.key }}" data-url="{{ r.url }}" data-summary="{{ r.summary|e }}" {% if selected and selected.key == r.key %}checked{% endif %}>
+                </td>
+                <td>
+                  <a href="{{ r.url }}" target="_blank">{{ r.key }}</a>
+                </td>
+                <td>{{ r.summary }}</td>
+                <td>{{ r.assignee }}</td>
+                <td>{{ r.status }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div id="selectedInfo" class="mt-3">
+          {% if selected %}
+            <div class="alert alert-info">Selected: <a href="{{ selected.url }}" target="_blank">{{ selected.key }}</a> — {{ selected.summary }}</div>
+          {% else %}
+            <div class="text-muted">No ticket selected.</div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-secondary">No search results. Connect to Jira and run a search.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

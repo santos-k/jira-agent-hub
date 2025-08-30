@@ -1,0 +1,33 @@
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="loginForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="loginModalLabel">Connect to Jira</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="loginAlertPlaceholder"></div>
+
+          <div class="mb-3">
+            <label for="jiraUrl" class="form-label">Jira URL</label>
+            <input type="url" class="form-control" id="jiraUrl" name="jira_url" placeholder="https://your-domain.atlassian.net" required>
+          </div>
+          <div class="mb-3">
+            <label for="jiraEmail" class="form-label">Email / Username</label>
+            <input type="email" class="form-control" id="jiraEmail" name="email" placeholder="user@example.com" required>
+          </div>
+          <div class="mb-3">
+            <label for="jiraToken" class="form-label">API Token / Password</label>
+            <input type="password" class="form-control" id="jiraToken" name="api_token" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Connect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

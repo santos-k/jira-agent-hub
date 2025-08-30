@@ -1,0 +1,94 @@
+document.addEventListener('DOMContentLoaded', function () {
+  const loginForm = document.getElementById('loginForm');
+  const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
+
+  function showAlert(message, type = 'danger') {
+    loginAlertPlaceholder.innerHTML = `\n      <div class="alert alert-${type} alert-dismissible" role="alert">\n        ${message}\n        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>\n      </div>\n    `;
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      loginAlertPlaceholder.innerHTML = '';
+      const jiraUrl = document.getElementById('jiraUrl').value.trim();
+      const email = document.getElementById('jiraEmail').value.trim();
+      const apiToken = document.getElementById('jiraToken').value.trim();
+
+      if (!jiraUrl || !email || !apiToken) {
+        showAlert('All fields are required.', 'warning');
+        return;
+      }
+
+      fetch('/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ jira_url: jiraUrl, email: email, api_token: apiToken })
+      })
+        .then(async res => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const msg = data && data.message ? data.message : (`Connection failed (${res.status})`);
+            showAlert(msg, 'danger');
+            return;
+          }
+          // success
+          // close modal and reload to update navbar
+          const modalEl = document.getElementById('loginModal');
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) modal.hide();
+          window.location.reload();
+        })
+        .catch(err => {
+          showAlert('Network error: ' + err.message, 'danger');
+        });
+    });
+  }
+
+  // Selection handling: radio buttons in results table
+  function attachSelectionHandlers() {
+    const radios = document.querySelectorAll('input[type="radio"][name="selected_ticket"]');
+    radios.forEach(r => {
+      r.addEventListener('change', function (ev) {
+        if (!this.checked) return;
+        const key = this.value;
+        const url = this.dataset.url;
+        const summary = this.dataset.summary || '';
+
+        fetch('/select', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ key: key, url: url, summary: summary })
+        })
+        .then(async res => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            // show a temporary alert near selectedInfo
+            const selInfo = document.getElementById('selectedInfo');
+            if (selInfo) selInfo.innerHTML = `<div class="alert alert-danger">Failed to select ticket: ${data.message || res.status}</div>`;
+            return;
+          }
+          // update selectedInfo UI
+          const selInfo = document.getElementById('selectedInfo');
+          if (selInfo) {
+            selInfo.innerHTML = `<div class="alert alert-info">Selected: <a href="${url}" target="_blank">${key}</a> — ${summary}</div>`;
+          }
+        })
+        .catch(err => {
+          const selInfo = document.getElementById('selectedInfo');
+          if (selInfo) selInfo.innerHTML = `<div class="alert alert-danger">Network error: ${err.message}</div>`;
+        });
+      });
+    });
+  }
+
+  // Attach on load
+  attachSelectionHandlers();
+
+  // If results are added dynamically later, you might re-run attachSelectionHandlers()
+});
