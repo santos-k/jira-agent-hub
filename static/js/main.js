@@ -177,4 +177,27 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+
+  // Search form handler: clear selected ticket and description on new search
+  const searchForm = document.getElementById('searchForm');
+  if (searchForm) {
+    searchForm.addEventListener('submit', function (e) {
+      // Remove selected ticket info from UI
+      const selInfo = document.getElementById('selectedInfo');
+      if (selInfo) {
+        selInfo.innerHTML = '<div class="text-muted">No ticket selected.</div>';
+      }
+      // Uncheck all radio buttons
+      const radios = document.querySelectorAll('input[type="radio"][name="selected_ticket"]');
+      radios.forEach(r => { r.checked = false; });
+      // Remove selected ticket from session via backend
+      fetch('/clear_selected', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+    });
+  }
 });

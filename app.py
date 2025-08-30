@@ -351,5 +351,10 @@ def refresh():
         session['selected_ticket'] = selected_info
     return jsonify({'success': True, 'results': results, 'selected': selected_info})
 
+@app.route('/clear_selected', methods=['POST'])
+def clear_selected():
+    session.pop('selected_ticket', None)
+    return jsonify({'success': True})
+
 if __name__ == "__main__":
     app.run(debug=True)
