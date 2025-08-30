@@ -107,4 +107,74 @@ document.addEventListener('DOMContentLoaded', function () {
   attachSelectionHandlers();
 
   // If results are added dynamically later, you might re-run attachSelectionHandlers()
+
+  // Refresh button handler
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function () {
+      refreshBtn.disabled = true;
+      fetch('/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        refreshBtn.disabled = false;
+        if (!res.ok || !data.success) {
+          showAlert(data.message || 'Failed to refresh.', 'danger');
+          return;
+        }
+        // Update table
+        const resultsTable = document.getElementById('resultsTable');
+        if (resultsTable && data.results) {
+          const tbody = resultsTable.querySelector('tbody');
+          if (tbody) {
+            tbody.innerHTML = '';
+            data.results.forEach(r => {
+              const selected = data.selected && data.selected.key === r.key;
+              tbody.innerHTML += `<tr data-key="${r.key}">
+                <td><input type="radio" name="selected_ticket" value="${r.key}" data-url="${r.url}" data-summary="${r.summary.replace(/"/g, '&quot;')}"${selected ? ' checked' : ''}></td>
+                <td><a href="${r.url}" target="_blank">${r.key}</a></td>
+                <td>${r.summary}</td>
+                <td>${r.assignee}</td>
+                <td>${r.status}</td>
+              </tr>`;
+            });
+          }
+        }
+        // Update selected ticket info
+        const selInfo = document.getElementById('selectedInfo');
+        if (selInfo) {
+          const selected = data.selected;
+          if (selected) {
+            const infoHtml = `<div class="alert alert-info">Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</div>`;
+            if (selected.description_html) {
+              const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc"></div></div></div>`;
+              selInfo.innerHTML = infoHtml + descWrapper;
+              const descDiv = selInfo.querySelector('.adf-desc');
+              if (descDiv) descDiv.innerHTML = selected.description_html;
+            } else if (selected.description) {
+              const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc" style="white-space: pre-wrap;"></div></div></div>`;
+              selInfo.innerHTML = infoHtml + descWrapper;
+              const descDiv = selInfo.querySelector('.adf-desc');
+              if (descDiv) descDiv.textContent = selected.description;
+            } else {
+              selInfo.innerHTML = infoHtml;
+            }
+          } else {
+            selInfo.innerHTML = '<div class="text-muted">No ticket selected.</div>';
+          }
+        }
+        // Re-attach radio handlers
+        attachSelectionHandlers();
+      })
+      .catch(err => {
+        refreshBtn.disabled = false;
+        showAlert('Network error: ' + err.message, 'danger');
+      });
+    });
+  }
 });

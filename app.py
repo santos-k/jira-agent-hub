@@ -266,5 +266,90 @@ def clear_results():
     flash("Search results cleared.", "info")
     return redirect(url_for("index"))
 
+@app.route('/refresh', methods=['POST'])
+def refresh():
+    if not session.get('jira_connected'):
+        return jsonify({'success': False, 'message': 'Not connected to Jira.'}), 403
+    last_query = session.get('last_query', '').strip()
+    if not last_query:
+        return jsonify({'success': False, 'message': 'No previous search found.'}), 400
+    # Re-run search logic
+    q = last_query
+    if "," in q:
+        keys = [k.strip().upper() for k in q.split(",") if k.strip()]
+        if keys and all(" " not in k for k in keys):
+            jql = f"issuekey in ({', '.join(keys)})"
+        else:
+            jql = q
+    else:
+        single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
+        if single_key_match:
+            key = single_key_match.group(1).upper()
+            jql = f"issuekey = {key}"
+        else:
+            jql = q
+    jira_url = session.get("jira_url")
+    email = session.get("jira_email")
+    api_token = session.get("jira_api_token")
+    resp = search_issues(jira_url, email, api_token, jql)
+    if isinstance(resp, dict) and resp.get("error"):
+        return jsonify({'success': False, 'message': resp.get('error')}), 500
+    issues = resp.get("issues", [])
+    results = []
+    for issue in issues:
+        fields = issue.get("fields", {})
+        assignee = fields.get("assignee")
+        assignee_name = assignee.get("displayName") if assignee else "Unassigned"
+        status = fields.get("status")
+        status_name = status.get("name") if status else ""
+        key = issue.get("key")
+        summary = fields.get("summary") or ""
+        ticket_url = f"{jira_url}/browse/{key}"
+        results.append({
+            "key": key,
+            "summary": summary,
+            "assignee": assignee_name,
+            "status": status_name,
+            "url": ticket_url,
+        })
+    session["search_results"] = results
+    # If a ticket is selected, refresh its description
+    selected = session.get('selected_ticket')
+    selected_info = None
+    if selected and selected.get('key'):
+        key = selected['key']
+        url = selected['url']
+        summary = selected.get('summary', '')
+        description_text = ''
+        description_html = ''
+        try:
+            issue_api = f"{jira_url}/rest/api/3/issue/{key}?expand=renderedFields"
+            r = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
+            if r.status_code == 200:
+                issue_data = r.json()
+                desc = issue_data.get('fields', {}).get('description')
+                if isinstance(desc, str):
+                    description_text = desc
+                else:
+                    description_text = adf_to_text(desc)
+                rendered_desc = issue_data.get('renderedFields', {}).get('description')
+                if rendered_desc:
+                    description_html = rendered_desc
+            else:
+                description_text = ''
+                description_html = ''
+        except Exception:
+            description_text = ''
+            description_html = ''
+        selected_info = {
+            'key': key,
+            'url': url,
+            'summary': summary,
+            'description': description_text,
+            'description_html': description_html
+        }
+        session['selected_ticket'] = selected_info
+    return jsonify({'success': True, 'results': results, 'selected': selected_info})
+
 if __name__ == "__main__":
     app.run(debug=True)
