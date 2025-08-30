@@ -55,6 +55,14 @@
         <div id="selectedInfo" class="mt-3">
           {% if selected %}
             <div class="alert alert-info">Selected: <a href="{{ selected.url }}" target="_blank">{{ selected.key }}</a> — {{ selected.summary }}</div>
+            {% if selected.description %}
+              <div class="card mt-2">
+                <div class="card-body">
+                  <h6 class="card-title">Description</h6>
+                  <div style="white-space: pre-wrap;">{{ selected.description }}</div>
+                </div>
+              </div>
+            {% endif %}
           {% else %}
             <div class="text-muted">No ticket selected.</div>
           {% endif %}

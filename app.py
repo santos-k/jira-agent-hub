@@ -80,6 +80,26 @@ def search_issues(jira_url, email, api_token, jql, max_results=50):
     except Exception as e:
         return {"error": str(e)}
 
+def adf_to_text(node):
+    """Recursively extract plain text from Atlassian Document Format (ADF)."""
+    if node is None:
+        return ""
+    if isinstance(node, str):
+        return node
+    text_parts = []
+    if isinstance(node, dict):
+        # Text node
+        if 'text' in node:
+            text_parts.append(node.get('text', ''))
+        # If node has content, recurse
+        if 'content' in node and isinstance(node['content'], list):
+            for child in node['content']:
+                text_parts.append(adf_to_text(child))
+    elif isinstance(node, list):
+        for n in node:
+            text_parts.append(adf_to_text(n))
+    return ''.join([p for p in text_parts if p])
+
 # Routes
 @app.route("/", methods=["GET"])
 def index():
@@ -199,8 +219,31 @@ def select_ticket():
     summary = data.get('summary')
     if not key:
         return jsonify({'success': False, 'message': 'No ticket key provided.'}), 400
-    # store minimal ticket info in session
-    session['selected_ticket'] = {'key': key, 'url': url, 'summary': summary}
+    # Attempt to fetch description for the selected issue from Jira
+    description_text = ''
+    try:
+        jira_url = session.get('jira_url')
+        email = session.get('jira_email')
+        api_token = session.get('jira_api_token')
+        if jira_url and email and api_token:
+            issue_api = f"{jira_url}/rest/api/3/issue/{key}?fields=description"
+            r = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
+            if r.status_code == 200:
+                issue_data = r.json()
+                desc = issue_data.get('fields', {}).get('description')
+                if isinstance(desc, str):
+                    description_text = desc
+                else:
+                    # likely Atlassian Document Format (ADF)
+                    description_text = adf_to_text(desc)
+            else:
+                # API call failed; keep description empty but return success
+                description_text = ''
+    except Exception:
+        description_text = ''
+
+    # store ticket info including description in session
+    session['selected_ticket'] = {'key': key, 'url': url, 'summary': summary, 'description': description_text}
     return jsonify({'success': True, 'selected': session['selected_ticket']})
 
 @app.route("/clear", methods=["POST"])

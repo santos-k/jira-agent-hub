@@ -76,9 +76,19 @@ document.addEventListener('DOMContentLoaded', function () {
           // update selectedInfo UI
           const selInfo = document.getElementById('selectedInfo');
           if (selInfo) {
-            selInfo.innerHTML = `<div class="alert alert-info">Selected: <a href="${url}" target="_blank">${key}</a> — ${summary}</div>`;
+            const selected = data.selected || { key, url, summary };
+            const infoHtml = `<div class="alert alert-info">Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</div>`;
+            if (selected.description) {
+              // insert description card and then set its text content to avoid HTML injection
+              const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc" style="white-space: pre-wrap;"></div></div></div>`;
+              selInfo.innerHTML = infoHtml + descWrapper;
+              const descDiv = selInfo.querySelector('.adf-desc');
+              if (descDiv) descDiv.textContent = selected.description;
+            } else {
+              selInfo.innerHTML = infoHtml;
+            }
           }
-        })
+         })
         .catch(err => {
           const selInfo = document.getElementById('selectedInfo');
           if (selInfo) selInfo.innerHTML = `<div class="alert alert-danger">Network error: ${err.message}</div>`;

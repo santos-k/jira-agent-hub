@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# Ignore flask_session files
+flask_session/
+# Local history for JetBrains IDEs
+.local-history/
+# Local history for VSCode
+.history/
+# Local history for Emacs

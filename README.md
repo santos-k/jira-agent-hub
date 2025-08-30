@@ -104,5 +104,15 @@ Note: FLASK_SECRET_KEY should be a random, strong string in production.
 - No search results: check that the JQL or issue keys are correct and the authenticated user has permissions to view the issues.
 - Static JS not updating: try a hard refresh (Ctrl+F5) to clear cached JS/CSS.
 
+### Selected ticket description
+- When you select a ticket in the search results, the app now fetches the issue description from Jira and displays it below the selection area.
+- The backend requests the issue via Jira REST (fields=description) and attempts to render plain text. If the description is returned in Atlassian Document Format (ADF), the server extracts text from the ADF structure.
+- The description is stored in the server-side session as part of session['selected_ticket'] so it persists across refreshes.
+
+If you do not see the description after selecting a ticket:
+- Ensure you are connected to Jira and the authenticated user has permission to view the issue's description.
+- Check browser DevTools Network tab for the POST /select request and server response.
+- Check server logs for any API error messages.
+
 ## License
 See LICENSE file.
