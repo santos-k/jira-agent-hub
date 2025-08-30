@@ -21,13 +21,18 @@ document.addEventListener('DOMContentLoaded', function () {
     localStorage.setItem('theme', mode);
   }
 
-  // On load, apply saved theme
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  setTheme(savedTheme);
+  // Detect system theme preference
+  function getSystemTheme() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  // On load, apply saved theme or system theme
+  const savedTheme = localStorage.getItem('theme');
+  const initialTheme = savedTheme || getSystemTheme();
+  setTheme(initialTheme);
 
   themeBtn.addEventListener('click', function () {
     const current = localStorage.getItem('theme') === 'dark' ? 'light' : 'dark';
     setTheme(current);
   });
 });
-
