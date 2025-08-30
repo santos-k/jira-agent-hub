@@ -3,7 +3,34 @@ document.addEventListener('DOMContentLoaded', function () {
   const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
 
   function showAlert(message, type = 'danger') {
-    loginAlertPlaceholder.innerHTML = `\n      <div class="alert alert-${type} alert-dismissible" role="alert">\n        ${message}\n        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>\n      </div>\n    `;
+    loginAlertPlaceholder.innerHTML = `\n      <div class="alert alert-${type} alert-dismissible fade show" role="alert">\n        ${message}\n        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>\n      </div>\n    `;
+    // Auto dismiss after 3 seconds
+    setTimeout(function() {
+      const alertDiv = loginAlertPlaceholder.querySelector('.alert');
+      if (alertDiv) {
+        // Use Bootstrap's built-in dismiss
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+        bsAlert.close();
+      }
+    }, 3000);
+  }
+
+  // Auto-dismiss all Bootstrap alerts (including flashed messages) after 3 seconds
+  function autoDismissAlerts() {
+    setTimeout(function() {
+      document.querySelectorAll('.alert.fade.show').forEach(function(alertDiv) {
+        try {
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+          bsAlert.close();
+        } catch (e) {
+          alertDiv.classList.remove('show');
+          alertDiv.classList.add('hide');
+          setTimeout(function() {
+            if (alertDiv.parentNode) alertDiv.parentNode.removeChild(alertDiv);
+          }, 500);
+        }
+      });
+    }, 3000);
   }
 
   if (loginForm) {
@@ -200,4 +227,6 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+
+  autoDismissAlerts();
 });
