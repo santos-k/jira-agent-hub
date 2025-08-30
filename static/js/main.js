@@ -104,15 +104,16 @@ document.addEventListener('DOMContentLoaded', function () {
           const selInfo = document.getElementById('selectedInfo');
           if (selInfo) {
             const selected = data.selected || { key, url, summary };
-            const infoHtml = `<div class="alert alert-info">Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</div>`;
+            let infoHtml = `<div class="alert alert-info d-flex justify-content-between align-items-center">`;
+            infoHtml += `<span>Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</span>`;
+            infoHtml += `<button type="button" class="btn btn-sm btn-outline-danger ms-2" id="deselectBtn">Deselect</button>`;
+            infoHtml += `</div>`;
             if (selected.description_html) {
-              // Render HTML description from Jira
               const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc"></div></div></div>`;
               selInfo.innerHTML = infoHtml + descWrapper;
               const descDiv = selInfo.querySelector('.adf-desc');
               if (descDiv) descDiv.innerHTML = selected.description_html;
             } else if (selected.description) {
-              // Fallback to plain text
               const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc" style="white-space: pre-wrap;"></div></div></div>`;
               selInfo.innerHTML = infoHtml + descWrapper;
               const descDiv = selInfo.querySelector('.adf-desc');
@@ -120,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
               selInfo.innerHTML = infoHtml;
             }
+            attachDeselectHandler();
           }
          })
         .catch(err => {
@@ -130,8 +132,34 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Deselect button handler
+  function attachDeselectHandler() {
+    const deselectBtn = document.getElementById('deselectBtn');
+    if (deselectBtn) {
+      deselectBtn.addEventListener('click', function () {
+        // Remove selected ticket info from UI
+        const selInfo = document.getElementById('selectedInfo');
+        if (selInfo) {
+          selInfo.innerHTML = '<div class="text-muted">No ticket selected.</div>';
+        }
+        // Uncheck all radio buttons
+        const radios = document.querySelectorAll('input[type="radio"][name="selected_ticket"]');
+        radios.forEach(r => { r.checked = false; });
+        // Remove selected ticket from session via backend
+        fetch('/clear_selected', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+      });
+    }
+  }
+
   // Attach on load
   attachSelectionHandlers();
+  attachDeselectHandler();
 
   // If results are added dynamically later, you might re-run attachSelectionHandlers()
 
@@ -197,6 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // Re-attach radio handlers
         attachSelectionHandlers();
+        attachDeselectHandler();
       })
       .catch(err => {
         refreshBtn.disabled = false;
