@@ -20,8 +20,10 @@
 .ai-chat-sidebar {
     position: fixed;
     top: 0;
-    right: -400px;
-    width: 400px;
+    /* width controlled by CSS variable so JS can update it */
+    --ai-sidebar-width: 400px;
+    right: calc(-1 * var(--ai-sidebar-width));
+    width: var(--ai-sidebar-width);
     height: 100vh;
     background-color: var(--bs-body-bg);
     border-left: 1px solid var(--bs-border-color);
@@ -33,6 +35,22 @@
 
 .ai-chat-sidebar.open {
     right: 0;
+}
+
+/* draggable resizer placed on left edge of sidebar */
+.ai-resizer {
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+    z-index: 1060;
+    /* make it slightly visible on hover */
+    background: transparent;
+}
+.ai-resizer:hover {
+    background: rgba(0,0,0,0.04);
 }
 
 .ai-chat-header {
