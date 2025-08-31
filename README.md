@@ -219,5 +219,63 @@ Notes and next steps
 - Replace any remaining print() calls across the project with logger.* calls for consistent logs.
 - The logger creates the logs/ directory automatically on first import.
 
+## Google GenAI AI Chat
+
+This project includes an optional Google GenAI (Gemini) chat integration.
+
+Installation
+- Install the library and other dependencies: `pip install -r requirements.txt` (google-genai will be installed by requirements).
+
+API Key
+- The Google GenAI API key is entered via the UI when you open the AI Chat sidebar and is stored in the server-side session for the duration of the session.
+- Alternatively you can POST the key to the endpoint `/api/ai/set_key` (json: `{ "api_key": "YOUR_KEY" }`).
+- If no API key is present the UI prompts the user to add one. If the user skips, the UI will show "AI not available without API Key" behavior.
+
+Running the AI Chat (development)
+- Start the Flask app: `python app.py` (the AI endpoints are available under `/api/ai/*`).
+- The original prompt suggested uvicorn; this integration is implemented as Flask endpoints in app.py. If you want a separate ASGI app, we can add one.
+
+API endpoints
+- GET /api/ai/has_key  — returns `{ "has_key": true|false }` to indicate whether a key is stored in the session.
+- POST /api/ai/set_key — store API key in session (body: `{ "api_key": "..." }`).
+- POST /api/ai/chat — send a message to the AI (body: `{ "message": "..." }`). Returns `{ "response": "..." }` or `{ "error": "..." }`.
+
+Client-side usage
+- The AI Chat button in the navbar opens a sidebar. If no API key is present, a modal prompts for one.
+- The sidebar provides an input, send button, loading state, message history, copy and regenerate buttons.
+
+Sample Python usage (SDK example)
+
+from google import genai
+client = genai.Client(api_key="your_api_key_here")
+chat = client.chats.create(model="gemini-2.0-flash-001")
+
+try:
+    response = chat.send_message("tell me a story")
+    print("Story:\n", response.text)
+except Exception as e:
+    print("Error:", e)
+
+try:
+    response = chat.send_message("summarize in 1 sentence")
+    print("Summarized:\n", response.text)
+except Exception as e:
+    print("Error:", e)
+
+Logging & error handling
+- AI-related logs are written to logs/ai_chat.log and to the console. Format: `%(asctime)s | %(levelname)s | %(name)s | %(message)s`.
+- The integration logs:
+  - INFO when chat sessions start, when messages are sent, when responses are received, and when API keys are saved.
+  - WARNING when the user attempts to chat without an API key.
+  - ERROR/exception when API calls fail or unexpected errors occur.
+- Frontend UI events are also posted to `/log_event` and emitted as INFO logs (theme toggles, AI open/close, send, response rendered).
+
+Troubleshooting
+- If the google-genai package is not installed you will see a warning and the AI endpoints will return appropriate errors. Install the dependency with `pip install google-genai`.
+- Logs are available in logs/ai_chat.log for diagnosing API failures and payload details.
+
+Security note
+- API keys are stored in the server-side session only and not written to disk. For production consider a secure secrets store and proper session backend (Redis) and TLS.
+
 ## License
 See LICENSE file.

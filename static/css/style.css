@@ -97,6 +97,30 @@
     max-height: 100px;
 }
 
+/* AI status banner shown at top of sidebar */
+.ai-status {
+  display: none; /* toggled by JS */
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  font-size: 0.9rem;
+}
+
+/* Hover logout overlay near AI Chat button */
+.ai-logout-overlay {
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  pointer-events: auto;
+}
+
+/* Ensure overlay looks OK on small screens */
+@media (max-width: 576px) {
+  .ai-logout-overlay { font-size: 11px; padding: 4px 6px; }
+}
+
 /* Responsive adjustments */
 @media (max-width: 576px) {
     .ai-chat-sidebar {

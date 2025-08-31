@@ -53,6 +53,13 @@ import re
 import time
 import json
 import logger as logutil
+try:
+    from ai.google_ai import GoogleAIChat
+except Exception:
+    # In some static-analysis environments the module may not be importable.
+    # Fall back to a None placeholder so runtime can handle missing AI client.
+    GoogleAIChat = None
+import logging as _logging
 
 # Configuration
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -63,6 +70,7 @@ Session(app)
 
 # Initialize logger
 logger = logutil.get_logger(__name__)
+ai_logger = _logging.getLogger('ai_chat')
 
 # Request/response logging: record start time and log after response
 try:
@@ -441,6 +449,73 @@ def log_event():
     except Exception:
         logger.exception("Failed to log UI event")
         return jsonify({'success': False}), 500
+
+# AI API: check if API key is present in session
+@app.route('/api/ai/has_key', methods=['GET'])
+def api_ai_has_key():
+    has = bool(session.get('genai_api_key'))
+    ai_logger.debug('has_key check -> %s', has)
+    return jsonify({'has_key': has}), 200
+
+# AI API: set API key in session
+@app.route('/api/ai/set_key', methods=['POST'])
+def api_ai_set_key():
+    try:
+        data = request.get_json() or {}
+        key = data.get('api_key')
+        if not key:
+            ai_logger.warning('Attempt to save empty API key')
+            return jsonify({'error': 'API key required'}), 400
+        # don't log the key itself
+        session['genai_api_key'] = key
+        ai_logger.info('Google GenAI API key saved in session')
+        return jsonify({'success': True}), 200
+    except Exception:
+        ai_logger.exception('Failed to save API key')
+        return jsonify({'error': 'internal error'}), 500
+
+# AI API: send chat message
+@app.route('/api/ai/chat', methods=['POST'])
+def api_ai_chat():
+    try:
+        data = request.get_json() or {}
+        message = data.get('message', '').strip()
+        if not message:
+            ai_logger.warning('Empty message received for /api/ai/chat')
+            return jsonify({'error': 'message is required'}), 400
+
+        api_key = session.get('genai_api_key')
+        if not api_key:
+            ai_logger.warning('Chat request without API key')
+            return jsonify({'error': 'API key missing'}), 403
+
+        ai_logger.info('Forwarding message to GoogleAI')
+        chat = GoogleAIChat(api_key)
+        # optionally start chat (GoogleAIChat will auto-start on send_message)
+        resp = chat.send_message(message)
+
+        if resp in ("Invalid API Key or unauthorized", "AI service unavailable"):
+            ai_logger.error('AI backend returned error: %s', resp)
+            return jsonify({'error': resp}), 503
+
+        ai_logger.info('AI response ready (len=%d)', len(resp))
+        return jsonify({'response': resp}), 200
+    except Exception:
+        ai_logger.exception('Unhandled exception in /api/ai/chat')
+        return jsonify({'error': 'internal server error'}), 500
+
+# AI API: clear API key from session (logout). Accept GET or POST to be resilient to client variations.
+@app.route('/api/ai/clear_key', methods=['POST', 'GET'])
+def api_ai_clear_key():
+    try:
+        # Remove key if exists
+        existed = 'genai_api_key' in session
+        session.pop('genai_api_key', None)
+        ai_logger.info('Google GenAI API key cleared from session via clear_key (existed=%s)', existed)
+        return jsonify({'success': True}), 200
+    except Exception:
+        ai_logger.exception('Failed to clear API key')
+        return jsonify({'error': 'internal error'}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
