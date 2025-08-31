@@ -53,6 +53,22 @@
     background: rgba(0,0,0,0.04);
 }
 
+/* show a connected-arrows icon centered on the resizer */
+.ai-resizer::before {
+  content: "\2194"; /* left-right arrow ↔ */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+
+.ai-resizer:hover::before {
+  color: rgba(0,0,0,0.8);
+}
+
 .ai-chat-header {
     padding: 1rem;
     border-bottom: 1px solid var(--bs-border-color);

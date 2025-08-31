@@ -498,6 +498,14 @@ def api_ai_chat():
             ai_logger.error('AI backend returned error: %s', resp)
             return jsonify({'error': resp}), 503
 
+        # persist response in session for viewing on the AI page
+        try:
+            session.setdefault('ai_history', [])
+            session['ai_history'].append({'prompt': message, 'response': resp, 'ts': time.time()})
+            session['last_ai_response'] = resp
+        except Exception:
+            ai_logger.exception('Failed to persist AI response to session')
+
         ai_logger.info('AI response ready (len=%d)', len(resp))
         return jsonify({'response': resp}), 200
     except Exception:
@@ -516,6 +524,18 @@ def api_ai_clear_key():
     except Exception:
         ai_logger.exception('Failed to clear API key')
         return jsonify({'error': 'internal error'}), 500
+
+@app.route('/ai', methods=['GET'])
+def ai_page():
+    # Render a simple page that shows the last AI response and the history from session
+    last = session.get('last_ai_response')
+    history = session.get('ai_history', [])
+    # render a template (created below)
+    try:
+        return render_template('ai_page.html', last=last, history=history)
+    except Exception:
+        # fallback: return simple JSON if templates not available
+        return jsonify({'last': last, 'history': history}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
