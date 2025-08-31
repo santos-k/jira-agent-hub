@@ -10,6 +10,15 @@ class AiChat {
         this.setupEventListeners();
         this.messages = [];
         this.loadingMessageId = null;
+
+        // render mode element (text or markdown)
+        this.renderModeElem = document.getElementById('aiRenderMode');
+        if (this.renderModeElem) {
+            this.renderModeElem.addEventListener('change', () => this.clearAiStatus());
+        }
+
+        // initialize resizer
+        this._initResizer();
     }
 
     // Helper to send UI events to the backend
@@ -177,9 +186,17 @@ class AiChat {
         if (node) {
             node.className = `chat-message ${type}-message`;
             const textDiv = node.querySelector('.message-text');
-            if (textDiv) textDiv.textContent = text;
-            // attach actions for ai messages
-            if (type === 'ai') this._attachAiActions(node, text);
+            if (textDiv) {
+                if (type === 'ai') this._renderAiContentToElem(textDiv, text);
+                else textDiv.textContent = text;
+            }
+            // attach actions for ai messages (ensure actions exist)
+            if (type === 'ai') {
+                // remove old actions if present
+                const existing = node.querySelector('.message-actions');
+                if (existing) existing.remove();
+                this._attachAiActions(node, text);
+            }
         } else {
             // fallback: add new message
             this.addMessage(text, type);
@@ -194,8 +211,7 @@ class AiChat {
         const textDiv = document.createElement('div');
         textDiv.className = 'message-text';
         if (type === 'ai') {
-            // allow html for AI responses if you trust backend
-            textDiv.textContent = text;
+            this._renderAiContentToElem(textDiv, text);
         } else {
             textDiv.textContent = text;
         }
@@ -348,6 +364,69 @@ class AiChat {
         if (!status) return;
         status.style.display = 'none';
         status.innerHTML = '';
+    }
+
+    _getRenderMode() {
+        try { return (this.renderModeElem && this.renderModeElem.value) ? this.renderModeElem.value : 'markdown'; }
+        catch (e) { return 'markdown'; }
+    }
+
+    // Render AI content into the message text element according to selected mode
+    _renderAiContentToElem(el, text) {
+        const mode = this._getRenderMode();
+        if (mode === 'markdown' && window.marked && window.DOMPurify) {
+            try {
+                const raw = marked.parse(text || '');
+                const clean = DOMPurify.sanitize(raw, {SAFE_FOR_TEMPLATES: true});
+                el.innerHTML = clean;
+                return;
+            } catch (e) {
+                console.debug('Markdown rendering failed, falling back to text', e);
+            }
+        }
+        // Default: render as plain text
+        el.textContent = text;
+    }
+
+    _initResizer() {
+        const resizer = document.getElementById('aiResizer');
+        const sidebar = this.sidebar;
+        if (!resizer || !sidebar) return;
+        // ensure CSS variable exists
+        if (!sidebar.style.getPropertyValue('--ai-sidebar-width')) sidebar.style.setProperty('--ai-sidebar-width', '400px');
+        let startX = 0;
+        let startWidth = 0;
+        const minW = 300;
+        const maxW = Math.min(window.innerWidth - 100, 900);
+
+        const onMouseMove = (e) => {
+            const delta = startX - e.clientX; // dragging left increases width
+            let newWidth = startWidth + delta;
+            if (newWidth < minW) newWidth = minW;
+            if (newWidth > maxW) newWidth = maxW;
+            sidebar.style.setProperty('--ai-sidebar-width', `${newWidth}px`);
+            sidebar.style.width = `${newWidth}px`;
+            // when closed, right should be negative width; when open, right:0 is handled by .open
+            if (!sidebar.classList.contains('open')) {
+                sidebar.style.right = `calc(-1 * ${newWidth}px)`;
+            }
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+        };
+
+        resizer.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            startX = ev.clientX;
+            const current = parseInt(getComputedStyle(sidebar).getPropertyValue('--ai-sidebar-width')) || sidebar.offsetWidth;
+            startWidth = current;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = 'col-resize';
+        });
     }
 }
 
