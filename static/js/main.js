@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
           }
           // success
+          // store last used jira url locally so the modal can be prefilled next time
+          try { localStorage.setItem('last_jira_url', jiraUrl); } catch (err) { /* ignore */ }
           // close modal and reload to update navbar
           const modalEl = document.getElementById('loginModal');
           const modal = bootstrap.Modal.getInstance(modalEl);
@@ -71,6 +73,22 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(err => {
           showAlert('Network error: ' + err.message, 'danger');
         });
+    });
+  }
+
+  // Prefill jiraUrl when opening the Connect modal
+  const loginModalEl = document.getElementById('loginModal');
+  if (loginModalEl) {
+    loginModalEl.addEventListener('show.bs.modal', function () {
+      try {
+        const last = localStorage.getItem('last_jira_url');
+        if (last) {
+          const jiraUrlInput = document.getElementById('jiraUrl');
+          if (jiraUrlInput && !jiraUrlInput.value) jiraUrlInput.value = last;
+        }
+      } catch (e) {
+        // ignore localStorage errors
+      }
     });
   }
 
