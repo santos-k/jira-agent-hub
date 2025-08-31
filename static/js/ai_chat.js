@@ -11,6 +11,21 @@ class AiChat {
         this.messages = [];
     }
 
+    // Helper to send UI events to the backend
+    sendUIEvent(payload) {
+        try {
+            const body = JSON.stringify(payload);
+            if (navigator.sendBeacon) {
+                const blob = new Blob([body], { type: 'application/json' });
+                navigator.sendBeacon('/log_event', blob);
+            } else {
+                fetch('/log_event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+            }
+        } catch (e) {
+            console.debug('sendUIEvent failed', e);
+        }
+    }
+
     setupEventListeners() {
         // Open/Close sidebar
         this.openButton.addEventListener('click', () => this.openSidebar());
@@ -38,10 +53,12 @@ class AiChat {
     openSidebar() {
         this.sidebar.classList.add('open');
         this.input.focus();
+        this.sendUIEvent({ category: 'ui', event: 'ai_chat_open' });
     }
 
     closeSidebar() {
         this.sidebar.classList.remove('open');
+        this.sendUIEvent({ category: 'ui', event: 'ai_chat_close' });
     }
 
     sendMessage() {
@@ -51,6 +68,9 @@ class AiChat {
         // Add user message
         this.addMessage(message, 'user');
         this.input.value = '';
+
+        // Log send event with payload size
+        this.sendUIEvent({ category: 'ai_chat', event: 'send_message', extra: { length: message.length } });
 
         // Mock AI response for now (frontend only)
         setTimeout(() => {
@@ -78,6 +98,8 @@ class AiChat {
             copyBtn.onclick = () => {
                 navigator.clipboard.writeText(text);
                 copyBtn.innerHTML = '<i class="bi bi-clipboard-check"></i>';
+                // Log copy event
+                this.sendUIEvent({ category: 'ai_chat', event: 'copy_response', extra: { length: text.length } });
                 setTimeout(() => {
                     copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
                 }, 2000);
@@ -105,6 +127,8 @@ class AiChat {
             .find(m => m.type === 'user')?.text;
 
         if (lastUserMessage) {
+            // Log regenerate event
+            this.sendUIEvent({ category: 'ai_chat', event: 'regenerate_response', extra: { lastUserLength: lastUserMessage.length } });
             this.addMessage('This is a regenerated mock AI response. Backend integration will be implemented later.', 'ai');
         }
     }
@@ -114,4 +138,3 @@ class AiChat {
 document.addEventListener('DOMContentLoaded', () => {
     window.aiChat = new AiChat();
 });
-

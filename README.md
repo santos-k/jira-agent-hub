@@ -166,5 +166,58 @@ Note: FLASK_SECRET_KEY should be a random, strong string in production.
 - When you "Connect to Jira" provide your Jira URL (e.g. https://your-domain.atlassian.net), your Atlassian account email and an API token.
 - The app stores the Jira API token in the server-side session for the duration of the session. For production, use secure session storage (Redis) or a secrets manager and avoid storing secrets in plaintext.
 
+## Logging
+
+This project uses a centralized logging facility implemented in logger.py. The logger provides both human-friendly console output and rotating file logs suitable for production.
+
+Key features
+- Uses Python's built-in logging module.
+- Console + RotatingFileHandler -> logs/app.log (10 MB max per file, 5 backups).
+- Log format: [%(asctime)s] [%(levelname)s] [%(name)s:%(funcName)s:%(lineno)d] - %(message)s
+- Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+- Request/response logging for Flask endpoints (method, path, status, payload size, duration).
+- Decorator @log_exceptions to automatically log exceptions with stack traces and re-raise.
+- Easy switch to structured JSON logs for ELK/Splunk.
+- Environment-based level: DEBUG in development, INFO in production (configurable via LOG_LEVEL or FLASK_ENV).
+
+Where logs are written
+- Human-readable logs and rotating files are stored under the logs/ directory in the project root. Default file: logs/app.log
+
+Environment variables
+- LOG_LEVEL: optional, can be DEBUG/INFO/WARNING/ERROR/CRITICAL. If not set, FLASK_ENV=development enables DEBUG; otherwise INFO.
+- LOG_JSON: set to 1 or true to emit JSON-formatted logs (good for ELK/Splunk ingestion).
+- FLASK_ENV: if set to development, the default level is DEBUG.
+
+Basic usage
+
+- Import a logger in any module:
+
+    from logger import get_logger
+    logger = get_logger(__name__)
+    logger.info("Starting important task")
+
+- Use the decorator to log unhandled exceptions and stack traces:
+
+    from logger import log_exceptions
+
+    @log_exceptions
+    def risky_operation():
+        # exceptions will be logged with stack trace
+        ...
+
+Flask request/response logging
+- The app registers before_request/after_request hooks that record request duration, payload size and status for each request. This log line is emitted at INFO level.
+
+Structured JSON logs
+- Enable structured JSON logs by setting LOG_JSON=1 in the environment. The logger will then emit JSON objects containing timestamp, level, logger, function, line and message fields to both console and file.
+
+Extending for production
+- Logs are written to logs/app.log and rotated when they exceed 10 MB (5 backups retained).
+- To integrate with centralized logging (ELK/Splunk), enable JSON mode and ship logs/app.log with your log forwarder.
+
+Notes and next steps
+- Replace any remaining print() calls across the project with logger.* calls for consistent logs.
+- The logger creates the logs/ directory automatically on first import.
+
 ## License
 See LICENSE file.
