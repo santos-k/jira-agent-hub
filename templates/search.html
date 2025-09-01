@@ -91,6 +91,41 @@
                 </div>
               </div>
             {% endif %}
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="manualPromptBtn">Execute Manual Prompt</button>
+
+            {# Manual Prompt Modal #}
+            <div class="modal fade" id="manualPromptModal" tabindex="-1" aria-labelledby="manualPromptModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="manualPromptModalLabel">Manual Prompt for Test Scenarios</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <textarea class="form-control" id="manualPromptInput" rows="4" placeholder="Enter your custom prompt..."></textarea>
+                    <div id="manualPromptError" class="text-danger mt-2" style="display:none;"></div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitManualPromptBtn">Submit/Ask</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {# History Section #}
+            {% if selected.scenario_history %}
+              <div class="card mt-2">
+                <div class="card-body">
+                  <h6 class="card-title">Scenario History</h6>
+                  <ul id="scenarioHistoryList">
+                    {% for hist in selected.scenario_history %}
+                      <li><span class="text-muted">{{ hist.prompt }}</span><ol>{% for s in hist.scenarios %}<li>{{ s }}</li>{% endfor %}</ol></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+            {% endif %}
           {% else %}
             <div class="text-muted">No ticket selected.</div>
           {% endif %}

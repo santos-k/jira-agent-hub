@@ -549,24 +549,28 @@ def generate_test_scenarios():
             return jsonify({'error': 'AI API key missing.'}), 403
         if not GoogleAIChat:
             return jsonify({'error': 'AI service unavailable.'}), 503
-        prompt = f"Generate concise test scenarios for the following Jira ticket description. List each scenario as a single line, numbered.\n\nDescription:\n{description}\n\nTest Scenarios:"
+        prompt = (
+            "Generate possible concise (keep as minimum as possible), end-to-end test scenarios for the story below. "
+            "Each scenario should be one sentence, covering the full flow: user action → system behavior → expected outcome. "
+            "Focus on critical paths; combine multiple checks when logical. "
+            "Avoid minor edge cases unless essential. "
+            "Phrase each scenario like: "
+            "Verify that [action] results in [expected outcome], including [key condition or variation]."
+            "\n\nStory:\n" + description + "\n\nTest Scenarios:"
+        )
         chat = GoogleAIChat(api_key)
         resp = chat.send_message(prompt)
-        # Parse response into numbered list
         scenarios = []
         if resp:
-            # Accept either numbered or bulleted list, split by lines
             for line in resp.splitlines():
                 line = line.strip()
                 if not line:
                     continue
-                # Remove leading number/bullet
-                m = re.match(r"^(?:\d+\.|\-|•)\s*(.+)$", line)
+                m = re.match(r"^(?:\d+\.|-|•)\s*(.+)$", line)
                 if m:
                     scenarios.append(m.group(1).strip())
                 else:
                     scenarios.append(line)
-        # Store in session under selected_ticket
         selected = session.get('selected_ticket', {})
         selected['test_scenarios'] = scenarios
         session['selected_ticket'] = selected
@@ -574,6 +578,94 @@ def generate_test_scenarios():
     except Exception:
         logger.exception('Failed to generate test scenarios')
         return jsonify({'error': 'internal error'}), 500
+
+@app.route('/api/manual_prompt_scenarios', methods=['POST'])
+def manual_prompt_scenarios():
+    try:
+        data = request.get_json() or {}
+        description = data.get('description', '').strip()
+        prompt = data.get('prompt', '').strip()
+        logger.info(f"Manual prompt request: description='{description[:100]}', prompt='{prompt[:100]}'")
+        selected = session.get('selected_ticket', {})
+        api_key = session.get('genai_api_key')
+        if not selected or not selected.get('key'):
+            logger.error('Manual prompt error: No selected ticket in session')
+            return jsonify({'error': 'No selected ticket. Please select a ticket first.'}), 400
+        if not api_key:
+            logger.error('Manual prompt error: No AI API key in session')
+            return jsonify({'error': 'AI API key missing.'}), 403
+        if not description:
+            logger.error('Manual prompt error: No description provided')
+            return jsonify({'error': 'Description is required.'}), 400
+        if not prompt:
+            logger.error('Manual prompt error: No prompt provided')
+            return jsonify({'error': 'Prompt is required.'}), 400
+        scenarios, error = generate_scenarios_with_ai(description, prompt)
+        if error:
+            logger.error(f"Manual prompt failed: {error}")
+            return jsonify({'error': error}), 400
+        # Update scenario history in session
+        history = selected.get('scenario_history', [])
+        # Save previous scenarios if present
+        if selected.get('test_scenarios'):
+            history.append({
+                'prompt': selected.get('last_prompt', 'Default'),
+                'scenarios': selected['test_scenarios']
+            })
+        selected['test_scenarios'] = scenarios
+        selected['last_prompt'] = prompt
+        selected['scenario_history'] = history
+        session['selected_ticket'] = selected
+        # Return new scenarios and last history item
+        last_history = history[-1] if history else None
+        logger.info(f"Manual prompt success: {len(scenarios)} scenarios generated.")
+        return jsonify({'scenarios': scenarios, 'history': last_history}), 200
+    except Exception as e:
+        logger.error(f"Manual prompt error: {e}")
+        return jsonify({'error': 'internal error'}), 500
+
+def generate_scenarios_with_ai(description, prompt=None):
+    api_key = session.get('genai_api_key')
+    if not api_key:
+        logger.error('AI API key missing for scenario generation')
+        return None, 'AI API key missing.'
+    if not GoogleAIChat:
+        logger.error('AI service unavailable for scenario generation')
+        return None, 'AI service unavailable.'
+    if not description:
+        logger.error('No description provided for scenario generation')
+        return None, 'Description is required.'
+    if prompt:
+        full_prompt = f"{prompt}\n\nStory:\n{description}\n\nTest Scenarios:"
+    else:
+        full_prompt = (
+            "Generate possible concise (keep as minimum as possible), end-to-end test scenarios for the story below. "
+            "Each scenario should be one sentence, covering the full flow: user action → system behavior → expected outcome. "
+            "Focus on critical paths; combine multiple checks when logical. "
+            "Avoid minor edge cases unless essential. "
+            "Phrase each scenario like: "
+            "Verify that [action] results in [expected outcome], including [key condition or variation]."
+            f"\n\nStory:\n{description}\n\nTest Scenarios:"
+        )
+    chat = GoogleAIChat(api_key)
+    try:
+        resp = chat.send_message(full_prompt)
+        logger.info(f"Manual prompt executed: {prompt if prompt else 'default'}")
+    except Exception as e:
+        logger.error(f"AI error: {e}")
+        return None, 'AI error: ' + str(e)
+    scenarios = []
+    if resp:
+        for line in resp.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r"^(?:\d+\.|-|•)\s*(.+)$", line)
+            if m:
+                scenarios.append(m.group(1).strip())
+            else:
+                scenarios.append(line)
+    return scenarios, None
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -246,10 +246,122 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Attach on load
-  attachSelectionHandlers();
-  attachDeselectHandler();
-  attachTableSortHandlers();
+  // Manual Prompt Modal logic
+  function attachManualPromptHandlers() {
+    const manualPromptBtn = document.getElementById('manualPromptBtn');
+    const manualPromptModal = document.getElementById('manualPromptModal');
+    const manualPromptInput = document.getElementById('manualPromptInput');
+    const submitManualPromptBtn = document.getElementById('submitManualPromptBtn');
+    const manualPromptError = document.getElementById('manualPromptError');
+    let bsManualPromptModal = null;
+    if (manualPromptModal) {
+      bsManualPromptModal = bootstrap.Modal.getOrCreateInstance(manualPromptModal);
+    }
+    if (manualPromptBtn && bsManualPromptModal) {
+      manualPromptBtn.onclick = function () {
+        manualPromptInput.value = '';
+        manualPromptError.style.display = 'none';
+        manualPromptError.textContent = '';
+        submitManualPromptBtn.disabled = false;
+        submitManualPromptBtn.textContent = 'Submit/Ask';
+        bsManualPromptModal.show();
+      };
+    }
+    if (submitManualPromptBtn && bsManualPromptModal) {
+      submitManualPromptBtn.onclick = function () {
+        const prompt = manualPromptInput.value.trim();
+        if (!prompt) {
+          manualPromptError.textContent = 'Prompt cannot be empty.';
+          manualPromptError.style.display = 'block';
+          return;
+        }
+        submitManualPromptBtn.disabled = true;
+        submitManualPromptBtn.textContent = 'Processing...';
+        manualPromptError.style.display = 'none';
+        // Get ticket description
+        const selInfo = document.getElementById('selectedInfo');
+        let description = '';
+        const descDiv = selInfo ? selInfo.querySelector('.adf-desc') : null;
+        if (descDiv) {
+          description = descDiv.textContent || descDiv.innerText || '';
+        }
+        fetch('/api/manual_prompt_scenarios', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ description: description, prompt: prompt })
+        })
+        .then(async res => {
+          submitManualPromptBtn.disabled = false;
+          submitManualPromptBtn.textContent = 'Submit/Ask';
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.scenarios) {
+            manualPromptError.textContent = data.error || 'Failed to generate scenarios.';
+            manualPromptError.style.display = 'block';
+            return;
+          }
+          bsManualPromptModal.hide();
+          // Update scenarios section
+          const testScenariosList = document.getElementById('testScenariosList');
+          if (testScenariosList) {
+            testScenariosList.innerHTML = '';
+            data.scenarios.forEach(s => {
+              const li = document.createElement('li');
+              li.textContent = s;
+              // Add copy/edit/regenerate actions
+              li.innerHTML += ' <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button>';
+              li.innerHTML += ' <button class="btn btn-xs btn-link editScenarioBtn" title="Edit">✏️</button>';
+              testScenariosList.appendChild(li);
+            });
+          }
+          // Update history section
+          const scenarioHistoryList = document.getElementById('scenarioHistoryList');
+          if (scenarioHistoryList && data.history) {
+            const histLi = document.createElement('li');
+            histLi.innerHTML = `<span class="text-muted">${data.history.prompt}</span><ol>${data.history.scenarios.map(s => `<li>${s}</li>`).join('')}</ol>`;
+            scenarioHistoryList.appendChild(histLi);
+          }
+        })
+        .catch(err => {
+          submitManualPromptBtn.disabled = false;
+          submitManualPromptBtn.textContent = 'Submit/Ask';
+          manualPromptError.textContent = 'Network error: ' + err.message;
+          manualPromptError.style.display = 'block';
+        });
+      };
+    }
+    // Copy/Edit/Regenerate actions
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('copyScenarioBtn')) {
+        const text = e.target.parentElement.firstChild.textContent;
+        navigator.clipboard.writeText(text);
+        e.target.textContent = '✅';
+        setTimeout(() => { e.target.textContent = '📋'; }, 1000);
+      } else if (e.target.classList.contains('editScenarioBtn')) {
+        const li = e.target.parentElement;
+        const oldText = li.firstChild.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = oldText;
+        input.className = 'form-control form-control-sm';
+        li.innerHTML = '';
+        li.appendChild(input);
+        input.focus();
+        input.addEventListener('blur', function() {
+          li.innerHTML = input.value + ' <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button> <button class="btn btn-xs btn-link editScenarioBtn" title="Edit">✏️</button>';
+        });
+        input.addEventListener('keydown', function(ev) {
+          if (ev.key === 'Enter') {
+            input.blur();
+          }
+        });
+      }
+    });
+  }
+
+  attachManualPromptHandlers();
 
   // If results are added dynamically later, you might re-run attachSelectionHandlers()
 
