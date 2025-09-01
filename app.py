@@ -537,5 +537,43 @@ def ai_page():
         # fallback: return simple JSON if templates not available
         return jsonify({'last': last, 'history': history}), 200
 
+@app.route('/api/generate_test_scenarios', methods=['POST'])
+def generate_test_scenarios():
+    try:
+        data = request.get_json() or {}
+        description = data.get('description', '').strip()
+        if not description:
+            return jsonify({'error': 'Description is required.'}), 400
+        api_key = session.get('genai_api_key')
+        if not api_key:
+            return jsonify({'error': 'AI API key missing.'}), 403
+        if not GoogleAIChat:
+            return jsonify({'error': 'AI service unavailable.'}), 503
+        prompt = f"Generate concise test scenarios for the following Jira ticket description. List each scenario as a single line, numbered.\n\nDescription:\n{description}\n\nTest Scenarios:"
+        chat = GoogleAIChat(api_key)
+        resp = chat.send_message(prompt)
+        # Parse response into numbered list
+        scenarios = []
+        if resp:
+            # Accept either numbered or bulleted list, split by lines
+            for line in resp.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                # Remove leading number/bullet
+                m = re.match(r"^(?:\d+\.|\-|•)\s*(.+)$", line)
+                if m:
+                    scenarios.append(m.group(1).strip())
+                else:
+                    scenarios.append(line)
+        # Store in session under selected_ticket
+        selected = session.get('selected_ticket', {})
+        selected['test_scenarios'] = scenarios
+        session['selected_ticket'] = selected
+        return jsonify({'scenarios': scenarios}), 200
+    except Exception:
+        logger.exception('Failed to generate test scenarios')
+        return jsonify({'error': 'internal error'}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)

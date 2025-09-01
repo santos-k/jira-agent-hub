@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(async res => {
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            // show a temporary alert near selectedInfo
             const selInfo = document.getElementById('selectedInfo');
             if (selInfo) selInfo.innerHTML = `<div class="alert alert-danger">Failed to select ticket: ${data.message || res.status}</div>`;
             return;
@@ -124,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const selected = data.selected || { key, url, summary };
             let infoHtml = `<div class="alert alert-info d-flex justify-content-between align-items-center">`;
             infoHtml += `<span>Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}</span>`;
-            infoHtml += `<button type="button" class="btn btn-sm btn-outline-danger ms-2" id="deselectBtn">Deselect</button>`;
+            infoHtml += `<div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-danger ms-2" id="deselectBtn">Deselect</button><button type="button" class="btn btn-sm btn-outline-primary ms-2" id="generateScenariosBtn">Generate Test Scenarios</button></div>`;
             infoHtml += `</div>`;
             if (selected.description_html) {
               const descWrapper = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc"></div></div></div>`;
@@ -139,7 +138,13 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
               selInfo.innerHTML = infoHtml;
             }
+            // Remove any previous scenarios section
+            const oldList = selInfo.querySelector('#testScenariosList');
+            if (oldList && oldList.parentElement && oldList.parentElement.parentElement) {
+              oldList.parentElement.parentElement.remove();
+            }
             attachDeselectHandler();
+            attachGenerateScenariosHandler();
           }
          })
         .catch(err => {
@@ -341,6 +346,67 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+
+  // Attach handler for Generate Test Scenarios button
+  function attachGenerateScenariosHandler() {
+    const btn = document.getElementById('generateScenariosBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      const selInfo = document.getElementById('selectedInfo');
+      if (!selInfo) return;
+      // Get description from the selected ticket
+      let description = '';
+      const descDiv = selInfo.querySelector('.adf-desc');
+      if (descDiv) {
+        description = descDiv.textContent || descDiv.innerText || '';
+      }
+      if (!description.trim()) {
+        selInfo.insertAdjacentHTML('beforeend', '<div class="alert alert-warning mt-2">No description found for this ticket.</div>');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      fetch('/api/generate_test_scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ description: description })
+      })
+      .then(async res => {
+        btn.disabled = false;
+        btn.textContent = 'Generate Test Scenarios';
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.scenarios) {
+          selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">${data.error || 'Failed to generate test scenarios.'}</div>`);
+          return;
+        }
+        // Render scenarios below description
+        let scenariosHtml = `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Generated Test Scenarios</h6><ol id="testScenariosList">`;
+        for (const scenario of data.scenarios) {
+          scenariosHtml += `<li>${scenario}</li>`;
+        }
+        scenariosHtml += `</ol></div></div>`;
+        // Remove any previous scenarios section
+        const oldList = selInfo.querySelector('#testScenariosList');
+        if (oldList && oldList.parentElement && oldList.parentElement.parentElement) {
+          oldList.parentElement.parentElement.remove();
+        }
+        selInfo.insertAdjacentHTML('beforeend', scenariosHtml);
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'Generate Test Scenarios';
+        selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">Network error: ${err.message}</div>`);
+      });
+    });
+  }
+
+  // After DOMContentLoaded, attach selection handlers
+  attachSelectionHandlers();
+  // If selectedInfo is present, attach generate scenarios handler
+  attachGenerateScenariosHandler();
 
   autoDismissAlerts();
 });
