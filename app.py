@@ -585,8 +585,11 @@ def manual_prompt_scenarios():
         data = request.get_json() or {}
         description = data.get('description', '').strip()
         prompt = data.get('prompt', '').strip()
-        logger.info(f"Manual prompt request: description='{description[:100]}', prompt='{prompt[:100]}'")
         selected = session.get('selected_ticket', {})
+        # If description is not provided, use the one from the selected ticket
+        if not description:
+            description = selected.get('description', '').strip()
+        logger.info(f"Manual prompt request: description='{description[:100]}', prompt='{prompt[:100]}'")
         api_key = session.get('genai_api_key')
         if not selected or not selected.get('key'):
             logger.error('Manual prompt error: No selected ticket in session')
