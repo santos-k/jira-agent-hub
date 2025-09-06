@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(async res => {
           btn.disabled = false;
-          btn.textContent = 'Generate Test Scenarios';
+          btn.textContent = 'Regenerate Test Scenarios';
           const data = await res.json().catch(() => ({}));
 
           if (!res.ok || !data.scenarios) {
@@ -368,8 +368,12 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="card-body">
                 <ol id="testScenariosList">`;
 
+          scenariosHtml += `<div class="d-flex justify-content-end mb-2">
+            <button class="btn btn-sm btn-outline-primary me-2 regenerateBtn" title="Regenerate scenarios">Regenerate</button>
+            <button class="btn btn-sm btn-outline-secondary copyAllBtn" title="Copy all scenarios">Copy All</button>
+          </div>`;
           for (const scenario of data.scenarios) {
-            scenariosHtml += `<li>${scenario} <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button></li>`;
+            scenariosHtml += `<li>${scenario}</li>`;
           }
           scenariosHtml += `</ol></div></div></div>`;
 
@@ -466,12 +470,19 @@ document.addEventListener('DOMContentLoaded', function () {
           const testScenariosList = document.getElementById('testScenariosList');
           if (testScenariosList) {
             testScenariosList.innerHTML = '';
+            // Add Copy All and Regenerate buttons
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'd-flex justify-content-end mb-2';
+            controlsDiv.innerHTML = `
+              <button class="btn btn-sm btn-outline-primary me-2 regenerateBtn" title="Regenerate scenarios">Regenerate</button>
+              <button class="btn btn-sm btn-outline-secondary copyAllBtn" title="Copy all scenarios">Copy All</button>
+            `;
+            testScenariosList.appendChild(controlsDiv);
+            
+            // Add scenarios
             data.scenarios.forEach(s => {
               const li = document.createElement('li');
               li.textContent = s;
-              // Add copy/edit/regenerate actions
-              li.innerHTML += ' <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button>';
-              li.innerHTML += ' <button class="btn btn-xs btn-link editScenarioBtn" title="Edit">✏️</button>';
               testScenariosList.appendChild(li);
             });
           }
@@ -493,11 +504,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // Copy/Edit/Regenerate actions
     document.addEventListener('click', function(e) {
-      if (e.target.classList.contains('copyScenarioBtn')) {
-        const text = e.target.parentElement.firstChild.textContent;
-        navigator.clipboard.writeText(text);
-        e.target.textContent = '✅';
-        setTimeout(() => { e.target.textContent = '📋'; }, 1000);
+      if (e.target.classList.contains('copyAllBtn')) {
+        const scenariosList = document.getElementById('testScenariosList');
+        if (scenariosList) {
+          const items = scenariosList.querySelectorAll('li');
+          let allText = '';
+          items.forEach((item, index) => {
+            allText += (index + 1) + '. ' + item.textContent + '\n';
+          });
+          navigator.clipboard.writeText(allText);
+          e.target.textContent = 'Copied ✅';
+          setTimeout(() => { e.target.textContent = 'Copy All'; }, 1000);
+        }
+      } else if (e.target.classList.contains('regenerateBtn')) {
+        const generateBtn = document.getElementById('generateScenariosBtn');
+        if (generateBtn) {
+          generateBtn.click();
+        }
       } else if (e.target.classList.contains('editScenarioBtn')) {
         const li = e.target.parentElement;
         const oldText = li.firstChild.textContent;
