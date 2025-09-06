@@ -11,6 +11,23 @@
   border: none;
 }
 
+/* Scrollable table styles */
+.table-responsive {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Only apply scrolling when more than 5 records */
+.table-responsive.scrollable-5 {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.table-responsive.scrollable-5.has-many-rows {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 /* Small responsive tweaks */
 @media (max-width: 576px) {
   .user-avatar { width: 36px; height: 36px; font-size: 0.9rem; }

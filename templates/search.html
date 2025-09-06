@@ -23,7 +23,7 @@
     <div class="card">
       <div class="card-body">
         <h5 class="card-title">Search Results</h5>
-        <div class="table-responsive">
+        <div class="table-responsive scrollable-5">
           <table class="table table-striped" id="resultsTable">
             <thead>
               <tr>
@@ -68,18 +68,22 @@
               </div>
               <div class="collapse show" id="selectedInfoContent">
                 <div class="card-body">
-                  {% if selected.description_html %}
+                  {% if selected.description_html or selected.description %}
                     <div class="card mt-2">
-                      <div class="card-body">
-                        <h6 class="card-title">Description</h6>
-                        <div>{{ selected.description_html | safe }}</div>
+                      <div class="card-header d-flex justify-content-between align-items-center">
+                        <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="true" aria-controls="descriptionContent">
+                          <i class="bi bi-chevron-down" id="descriptionIcon"></i>
+                          Description
+                        </button>
                       </div>
-                    </div>
-                  {% elif selected.description %}
-                    <div class="card mt-2">
-                      <div class="card-body">
-                        <h6 class="card-title">Description</h6>
-                        <div style="white-space: pre-wrap;">{{ selected.description }}</div>
+                      <div class="collapse show" id="descriptionContent">
+                        <div class="card-body">
+                          {% if selected.description_html %}
+                            <div>{{ selected.description_html | safe }}</div>
+                          {% else %}
+                            <div style="white-space: pre-wrap;">{{ selected.description }}</div>
+                          {% endif %}
+                        </div>
                       </div>
                     </div>
                   {% endif %}

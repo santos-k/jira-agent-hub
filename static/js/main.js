@@ -1,4 +1,21 @@
 document.addEventListener('DOMContentLoaded', function () {
+  // Check if table needs scrolling (more than 5 rows)
+  function checkTableScrolling() {
+    const tableResponsive = document.querySelector('.table-responsive.scrollable-5');
+    const resultsTable = document.getElementById('resultsTable');
+    
+    if (tableResponsive && resultsTable) {
+      const rows = resultsTable.querySelectorAll('tbody tr');
+      if (rows.length > 5) {
+        tableResponsive.classList.add('has-many-rows');
+      } else {
+        tableResponsive.classList.remove('has-many-rows');
+      }
+    }
+  }
+  
+  // Run on page load
+  checkTableScrolling();
   const loginForm = document.getElementById('loginForm');
   const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
 
@@ -152,10 +169,20 @@ document.addEventListener('DOMContentLoaded', function () {
       <div class="collapse show" id="selectedInfoContent">
         <div class="card-body">`;
 
-    if (selected.description_html) {
-      infoHtml += `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc"></div></div></div>`;
-    } else if (selected.description) {
-      infoHtml += `<div class="card mt-2"><div class="card-body"><h6 class="card-title">Description</h6><div class="adf-desc" style="white-space: pre-wrap;"></div></div></div>`;
+    if (selected.description_html || selected.description) {
+      infoHtml += `<div class="card mt-2">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="true" aria-controls="descriptionContent">
+            <i class="bi bi-chevron-down" id="descriptionIcon"></i>
+            Description
+          </button>
+        </div>
+        <div class="collapse show" id="descriptionContent">
+          <div class="card-body">
+            <div class="adf-desc" ${selected.description && !selected.description_html ? 'style="white-space: pre-wrap;"' : ''}></div>
+          </div>
+        </div>
+      </div>`;
     }
 
     if (selected.test_scenarios && selected.test_scenarios.length > 0) {
@@ -208,6 +235,18 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       selectedInfoContent.addEventListener('hide.bs.collapse', function () {
         selectedInfoIcon.className = 'bi bi-chevron-right';
+      });
+    }
+
+    // Handle description collapse
+    const descriptionContent = document.getElementById('descriptionContent');
+    const descriptionIcon = document.getElementById('descriptionIcon');
+    if (descriptionContent && descriptionIcon) {
+      descriptionContent.addEventListener('show.bs.collapse', function () {
+        descriptionIcon.className = 'bi bi-chevron-down';
+      });
+      descriptionContent.addEventListener('hide.bs.collapse', function () {
+        descriptionIcon.className = 'bi bi-chevron-right';
       });
     }
 
@@ -592,6 +631,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // Re-attach radio handlers
         attachSelectionHandlers();
+        // Check if table needs scrolling
+        checkTableScrolling();
       })
       .catch(err => {
         refreshBtn.disabled = false;
@@ -630,4 +671,5 @@ document.addEventListener('DOMContentLoaded', function () {
   attachManualPromptHandlers();
   attachTableSortHandlers();
   autoDismissAlerts();
+  checkTableScrolling(); // Check if table needs scrolling on page load
 });
