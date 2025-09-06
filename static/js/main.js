@@ -372,7 +372,14 @@ document.addEventListener('DOMContentLoaded', function () {
             <button class="btn btn-sm btn-outline-primary me-2 regenerateBtn" title="Regenerate scenarios">Regenerate</button>
             <button class="btn btn-sm btn-outline-secondary copyAllBtn" title="Copy all scenarios">Copy All</button>
           </div>`;
-          for (const scenario of data.scenarios) {
+          // Filter out any introductory text that's not actually a test scenario
+          const filteredScenarios = data.scenarios.filter(scenario => {
+            // Skip introductory text like "Here are concise, end-to-end test scenarios..."
+            return !scenario.toLowerCase().includes("here are") && 
+                   !scenario.toLowerCase().includes("test scenario");
+          });
+          
+          for (const scenario of filteredScenarios) {
             scenariosHtml += `<li>${scenario}</li>`;
           }
           scenariosHtml += `</ol></div></div></div>`;
@@ -479,8 +486,15 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             testScenariosList.appendChild(controlsDiv);
             
+            // Filter out any introductory text that's not actually a test scenario
+            const filteredScenarios = data.scenarios.filter(scenario => {
+              // Skip introductory text like "Here are concise, end-to-end test scenarios..."
+              return !scenario.toLowerCase().includes("here are") && 
+                     !scenario.toLowerCase().includes("test scenario");
+            });
+            
             // Add scenarios
-            data.scenarios.forEach(s => {
+            filteredScenarios.forEach(s => {
               const li = document.createElement('li');
               li.textContent = s;
               testScenariosList.appendChild(li);
@@ -489,8 +503,14 @@ document.addEventListener('DOMContentLoaded', function () {
           // Update history section
           const scenarioHistoryList = document.getElementById('scenarioHistoryList');
           if (scenarioHistoryList && data.history) {
+            // Filter out any introductory text from history scenarios
+            const filteredHistoryScenarios = data.history.scenarios.filter(scenario => {
+              return !scenario.toLowerCase().includes("here are") && 
+                     !scenario.toLowerCase().includes("test scenario");
+            });
+            
             const histLi = document.createElement('li');
-            histLi.innerHTML = `<span class="text-muted">${data.history.prompt}</span><ol>${data.history.scenarios.map(s => `<li>${s}</li>`).join('')}</ol>`;
+            histLi.innerHTML = `<span class="text-muted">${data.history.prompt}</span><ol>${filteredHistoryScenarios.map(s => `<li>${s}</li>`).join('')}</ol>`;
             scenarioHistoryList.appendChild(histLi);
           }
         })
@@ -507,7 +527,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (e.target.classList.contains('copyAllBtn')) {
         const scenariosList = document.getElementById('testScenariosList');
         if (scenariosList) {
-          const items = scenariosList.querySelectorAll('li');
+          // Get all list items but skip the first one if it contains the controls div
+          const items = Array.from(scenariosList.querySelectorAll('li')).filter(item => {
+            // Skip items that contain buttons (these are control elements, not scenarios)
+            return !item.querySelector('button');
+          });
+          
           let allText = '';
           items.forEach((item, index) => {
             allText += (index + 1) + '. ' + item.textContent + '\n';
