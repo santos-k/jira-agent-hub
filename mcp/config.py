@@ -18,6 +18,10 @@ class MCPConfig:
         "mcp_server_url": "https://mcp.atlassian.com",
         "use_remote_mcp": True,  # Use Atlassian's Remote MCP Server by default
         "local_mcp_url": "http://localhost:8080",  # For self-hosted MCP server
+        # AI-specific configuration
+        "mcp_ai_enabled": True,  # Enable MCP AI by default when MCP is enabled
+        "mcp_ai_model": "default",  # Default AI model to use
+        "mcp_ai_max_tokens": 1000,  # Maximum tokens for AI responses
     }
     
     def __init__(self):

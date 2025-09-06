@@ -56,10 +56,12 @@ import json
 import logger as logutil
 try:
     from ai.google_ai import GoogleAIChat
+    from ai.mcp_ai import MCPAIChat
 except Exception:
     # In some static-analysis environments the module may not be importable.
     # Fall back to a None placeholder so runtime can handle missing AI client.
     GoogleAIChat = None
+    MCPAIChat = None
 import logging as _logging
 logger = logutil.get_logger(__name__)
 # Import MCP modules
@@ -561,42 +563,26 @@ def generate_test_scenarios():
     try:
         data = request.get_json() or {}
         description = data.get('description', '').strip()
-        if not description:
-            return jsonify({'error': 'Description is required.'}), 400
-        api_key = session.get('genai_api_key')
-        if not api_key:
-            return jsonify({'error': 'AI API key missing.'}), 403
-        if not GoogleAIChat:
-            return jsonify({'error': 'AI service unavailable.'}), 503
-        prompt = (
-            "Generate possible concise (keep as minimum as possible), end-to-end test scenarios for the story below. "
-            "Each scenario should be one sentence, covering the full flow: user action → system behavior → expected outcome. "
-            "Focus on critical paths; combine multiple checks when logical. "
-            "Avoid minor edge cases unless essential. "
-            "Phrase each scenario like: "
-            "Verify that [action] results in [expected outcome], including [key condition or variation]."
-            "\n\nStory:\n" + description + "\n\nTest Scenarios:"
-        )
-        chat = GoogleAIChat(api_key)
-        resp = chat.send_message(prompt)
-        scenarios = []
-        if resp:
-            for line in resp.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                m = re.match(r"^(?:\d+\.|-|•)\s*(.+)$", line)
-                if m:
-                    scenarios.append(m.group(1).strip())
-                else:
-                    scenarios.append(line)
+        custom_prompt = data.get('prompt', '')
+        
+        # Use the common generate_scenarios_with_ai function
+        scenarios, error = generate_scenarios_with_ai(description, custom_prompt)
+        
+        if error:
+            return jsonify({'error': error}), 400 if 'required' in error.lower() else 503
+            
+        if not scenarios:
+            return jsonify({'error': 'Failed to generate scenarios.'}), 500
+            
+        # Store scenarios in session
         selected = session.get('selected_ticket', {})
         selected['test_scenarios'] = scenarios
         session['selected_ticket'] = selected
-        return jsonify({'scenarios': scenarios}), 200
-    except Exception:
-        logger.exception('Failed to generate test scenarios')
-        return jsonify({'error': 'internal error'}), 500
+        
+        return jsonify({'scenarios': scenarios})
+    except Exception as e:
+        logger.exception(f"Error generating test scenarios: {str(e)}")
+        return jsonify({'error': f'Error: {str(e)}'}), 500
 
 @app.route('/api/manual_prompt_scenarios', methods=['POST'])
 def manual_prompt_scenarios():
@@ -647,16 +633,11 @@ def manual_prompt_scenarios():
         return jsonify({'error': 'internal error'}), 500
 
 def generate_scenarios_with_ai(description, prompt=None):
-    api_key = session.get('genai_api_key')
-    if not api_key:
-        logger.error('AI API key missing for scenario generation')
-        return None, 'AI API key missing.'
-    if not GoogleAIChat:
-        logger.error('AI service unavailable for scenario generation')
-        return None, 'AI service unavailable.'
     if not description:
         logger.error('No description provided for scenario generation')
         return None, 'Description is required.'
+        
+    # Prepare the prompt
     if prompt:
         full_prompt = f"{prompt}\n\nStory:\n{description}\n\nTest Scenarios:"
     else:
@@ -669,13 +650,38 @@ def generate_scenarios_with_ai(description, prompt=None):
             "Verify that [action] results in [expected outcome], including [key condition or variation]."
             f"\n\nStory:\n{description}\n\nTest Scenarios:"
         )
-    chat = GoogleAIChat(api_key)
-    try:
-        resp = chat.send_message(full_prompt)
-        logger.info(f"Manual prompt executed: {prompt if prompt else 'default'}")
-    except Exception as e:
-        logger.error(f"AI error: {e}")
-        return None, 'AI error: ' + str(e)
+    
+    # Check if MCP is enabled and connected
+    if HAS_MCP and session.get("mcp_enabled"):
+        # Use MCP AI for test scenario generation
+        if not MCPAIChat:
+            logger.error('MCP AI service unavailable for scenario generation')
+            return None, 'MCP AI service unavailable.'
+            
+        chat = MCPAIChat()
+        try:
+            resp = chat.send_message(full_prompt)
+            logger.info(f"MCP AI prompt executed: {prompt if prompt else 'default'}")
+        except Exception as e:
+            logger.error(f"MCP AI error: {e}")
+            return None, 'MCP AI error: ' + str(e)
+    else:
+        # Fall back to Google AI if MCP is not available
+        api_key = session.get('genai_api_key')
+        if not api_key:
+            logger.error('AI API key missing for scenario generation')
+            return None, 'AI API key missing.'
+        if not GoogleAIChat:
+            logger.error('AI service unavailable for scenario generation')
+            return None, 'AI service unavailable.'
+            
+        chat = GoogleAIChat(api_key)
+        try:
+            resp = chat.send_message(full_prompt)
+            logger.info(f"Google AI prompt executed: {prompt if prompt else 'default'}")
+        except Exception as e:
+            logger.error(f"Google AI error: {e}")
+            return None, 'AI error: ' + str(e)
     scenarios = []
     if resp:
         for line in resp.splitlines():
