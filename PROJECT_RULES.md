@@ -75,6 +75,14 @@ Jira Agent Hub is a lightweight Flask web application that provides a user inter
 2. **Error Handling**: Always check response status codes and handle errors appropriately.
 3. **Rate Limiting**: Be mindful of Jira API rate limits and implement appropriate backoff strategies.
 
+### Jira MCP (Model Context Protocol)
+
+1. **Configuration**: Use the `mcp_config` module for all MCP configuration settings.
+2. **Authentication**: Support both API token (via existing Jira session) and OAuth authentication methods.
+3. **Integration**: Use the `MCPClient` class for all interactions with the MCP server.
+4. **Error Handling**: Implement proper error handling and logging for all MCP operations.
+5. **Fallback**: Always provide fallback to standard Jira API when MCP is unavailable or disabled.
+
 ### AI Integration
 
 1. **API Keys**: Never hardcode API keys. Use environment variables or the UI for key management.

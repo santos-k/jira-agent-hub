@@ -1,11 +1,12 @@
 try:
-    from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g
+    from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g, Blueprint
 except Exception:
     # Fallback stubs for environments without Flask (used only to satisfy static analysis/editing tools)
     class _StubSession(dict):
         pass
 
     Flask = object
+    Blueprint = object
 
     def render_template(*a, **k):
         return ""
@@ -60,6 +61,15 @@ except Exception:
     # Fall back to a None placeholder so runtime can handle missing AI client.
     GoogleAIChat = None
 import logging as _logging
+logger = logutil.get_logger(__name__)
+# Import MCP modules
+try:
+    from mcp.api import mcp_bp
+    from mcp.config import mcp_config
+    from mcp.auth import mcp_auth
+    HAS_MCP = True
+except ImportError:
+    HAS_MCP = False
 
 # Configuration
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -71,6 +81,11 @@ Session(app)
 # Initialize logger
 logger = logutil.get_logger(__name__)
 ai_logger = _logging.getLogger('ai_chat')
+
+# Register MCP blueprint if available
+if HAS_MCP:
+    app.register_blueprint(mcp_bp)
+    logger.info("MCP integration enabled")
 
 # Request/response logging: record start time and log after response
 try:
@@ -198,6 +213,10 @@ def connect():
 def logout():
     # Clear connection-related session data
     keys = ["jira_connected", "jira_url", "jira_email", "jira_api_token", "user_full_name", "user_email", "user_initials", "search_results", "last_query", "selected_ticket"]
+    
+    # Clear MCP session data if MCP is enabled
+    if HAS_MCP:
+        mcp_auth.clear_auth()
     for k in keys:
         session.pop(k, None)
     logger.info("User logged out and session cleared")
