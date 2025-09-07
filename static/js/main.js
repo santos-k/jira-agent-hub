@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
           </button>
           <button type="button" class="btn btn-sm btn-primary action-btn" id="generateScenariosBtn" title="Generate test scenarios">
             <i class="bi bi-magic"></i>
-            <span class="d-none d-md-inline ms-1">Generate Test Scenarios</span>
+            <span class="d-none d-md-inline ms-1">${selected.test_scenarios && selected.test_scenarios.length > 0 ? 'Regenerate Test Scenarios' : 'Generate Test Scenarios'}</span>
           </button>
         </div>
       </div>
@@ -365,8 +365,13 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
         const originalIcon = btn.querySelector('i');
         const originalText = btn.querySelector('span');
-        if (originalIcon) originalIcon.className = 'bi bi-magic spinner';
-        if (originalText) originalText.textContent = 'Generating...';
+        const hasExistingScenarios = selInfo.querySelector('#testScenariosContent');
+        
+        // Keep icon static, only change text
+        if (originalIcon) originalIcon.className = 'bi bi-magic';
+        if (originalText) {
+          originalText.textContent = hasExistingScenarios ? 'Regenerating...' : 'Generating...';
+        }
 
         // Remove any previous error alerts
         const oldAlerts = selInfo.querySelectorAll('.alert-warning, .alert-danger');
@@ -383,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(async res => {
           btn.disabled = false;
           if (originalIcon) originalIcon.className = 'bi bi-magic';
-          if (originalText) originalText.textContent = 'Generate Test Scenarios';
+          if (originalText) originalText.textContent = 'Regenerate Test Scenarios';
           
           const data = await res.json().catch(() => ({}));
 
@@ -447,7 +452,10 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(err => {
           btn.disabled = false;
           if (originalIcon) originalIcon.className = 'bi bi-magic';
-          if (originalText) originalText.textContent = 'Generate Test Scenarios';
+          if (originalText) {
+            const hasExistingScenarios = selInfo.querySelector('#testScenariosContent');
+            originalText.textContent = hasExistingScenarios ? 'Regenerate Test Scenarios' : 'Generate Test Scenarios';
+          }
           
           selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">Network error: ${err.message}</div>`);
         });
