@@ -4,6 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Jira Agent Hub</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="alternate icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAA3klEQVRYhe2WQQ6AIAxE6f2PzMZEY0w0xkRjTDTGRGNMNMZEY0w0xkRjTDQm+gf+BsVEY0w0xkRjTDTGRGNMNMZEY6IxJhpjojEmGmOiMSYaY6IxJhpjojEmGhP9A/+CYqIxJhpjojEmGmOiMSYaE40x0RgTjTHRGBONMdEYE40x0RgTjYn+gX9BMdEYE40x0RgTjTHRGBONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGhMNMZEY0w0xkRjTDTGRGOif+BfUEw0xkRjTDTGRGNMNMZEY6IxJhpjojEmGmOiMSYaY6IxJhoz/UP+AmKiMSYaY6IxJhpjojEmGhOtMdEYE40x0RgTjTHRGBONMdEYE42J/oF/QTHRGBONMdEYE40x0RgTjYnWmGiMicaYaIyJxphojInGmGhMNCb6B/4FxURjTDTGRGNMNMZEY0w0JlpjojEmGmOiMSYaY6IxJhpjojHRmOgf+BcUE40x0RgTjTHRGBONMdGYaI2JxphojInGmGhMNMZEY0w0JhoT/QP/gmKiMSYaY6IxJhpjojEmGhONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGiMicaYaIyJxphojInGRGOif+BfUEw0xkRjTDTGRGNMNMZEY6I1JhpjojEmGmOiMSYaY6IxJhoTjYn+gX9BMdEYE40x0RgTjTHRGBONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGiMicaYaIyJxphojInGRGOif+BfUP4BuILX7v8kZN8AAAAASUVORK5CYII=">
+    <link rel="icon" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAA3klEQVRYhe2WQQ6AIAxE6f2PzMZEY0w0xkRjTDTGRGNMNMZEY0w0xkRjTDQm+gf+BsVEY0w0xkRjTDTGRGNMNMZEY6IxJhpjojEmGmOiMSYaY6IxJhpjojEmGhP9A/+CYqIxJhpjojEmGmOiMSYaE40x0RgTjTHRGBONMdEYE40x0RgTjYn+gX9BMdEYE40x0RgTjTHRGBONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGhMNMZEY0w0xkRjTDTGRGOif+BfUEw0xkRjTDTGRGNMNMZEY6IxJhpjojEmGmOiMSYaY6IxJhoz/UP+AmKiMSYaY6IxJhpjojEmGhOtMdEYE40x0RgTjTHRGBONMdEYE42J/oF/QTHRGBONMdEYE40x0RgTjYnWmGiMicaYaIyJxphojInGmGhMNCb6B/4FxURjTDTGRGNMNMZEY0w0JlpjojEmGmOiMSYaY6IxJhpjojHRmOgf+BcUE40x0RgTjTHRGBONMdGYaI2JxphojInGmGhMNMZEY0w0JhoT/QP/gmKiMSYaY6IxJhpjojEmGhONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGiMicaYaIyJxphojInGRGOif+BfUEw0xkRjTDTGRGNMNMZEY6I1JhpjojEmGmOiMSYaY6IxJhoTjYn+gX9BMdEYE40x0RgTjTHRGBONidaYaIyJxphojInGmGiMicaYaEw0JvoH/gXFRGNMNMZEY0w0xkRjTDQmWmOiMSYaY6IxJhpjojEmGmOiMdGY6B/4FxQTjTHRGBONMdEYE40x0ZhojYnGmGiMicaYaIyJxphojInGRGOif+BfUP4BuILX7v8kZN8AAAAASUVORK5CYII=">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -63,11 +69,12 @@
       </div>
     </nav>
 
-    <div class="container-fluid my-4">
+    <!-- Sticky Alert Container -->
+    <div id="stickyAlerts" class="sticky-alerts">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, msg in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ category }} alert-dismissible fade show sticky-alert" role="alert">
               <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% elif category == 'warning' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
               {{ msg }}
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -75,6 +82,9 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
+    </div>
+
+    <div class="container-fluid my-4">
 
       {% block content %}{% endblock %}
     </div>

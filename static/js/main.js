@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const resultsTable = document.getElementById('resultsTable');
     
     if (tableResponsive && resultsTable) {
-      const rows = resultsTable.querySelectorAll('tbody tr');
+      const rows = resultsTable.querySelectorAll('.table-row');
       if (rows.length > 5) {
         tableResponsive.classList.add('has-many-rows');
       } else {
@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', function () {
   
   // Run on page load
   checkTableScrolling();
+  
+  // Auto-dismiss alerts on page load
+  autoDismissAlerts();
   const loginForm = document.getElementById('loginForm');
   const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
 
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 3000);
   }
 
-  // Auto-dismiss all Bootstrap alerts (including flashed messages) after 3 seconds
+  // Auto-dismiss all Bootstrap alerts (including flashed messages) after 5 seconds
   function autoDismissAlerts() {
     setTimeout(function() {
       document.querySelectorAll('.alert.fade.show').forEach(function(alertDiv) {
@@ -47,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }, 500);
         }
       });
-    }, 3000);
+    }, 5000); // Extended to 5 seconds for better visibility
   }
 
   if (loginForm) {
@@ -948,18 +951,27 @@ document.addEventListener('DOMContentLoaded', function () {
   // Table sorting for search results
   function sortTableByColumn(table, column, asc = true) {
     const dirModifier = asc ? 1 : -1;
-    const tBody = table.tBodies[0];
-    const rows = Array.from(tBody.querySelectorAll('tr'));
+    const tableBody = table.querySelector('.table-body');
+    if (!tableBody) return;
+    
+    const rows = Array.from(tableBody.querySelectorAll('.table-row'));
 
-    // Get the column index
-    const headerCells = Array.from(table.tHead.rows[0].cells);
-    let colIdx = headerCells.findIndex(th => th.dataset.column === column);
-    if (colIdx === -1) return;
+    // Get the column index mapping
+    const columnMap = {
+      'key': 1,      // Ticket ID
+      'summary': 2,  // Summary
+      'assignee': 3, // Assignee
+      'status': 4    // Status
+    };
+    
+    const colIdx = columnMap[column];
+    if (colIdx === undefined) return;
 
     // Sort rows
     rows.sort((a, b) => {
-      const aText = a.cells[colIdx].textContent.trim().toLowerCase();
-      const bText = b.cells[colIdx].textContent.trim().toLowerCase();
+      const aText = a.children[colIdx]?.textContent.trim().toLowerCase() || '';
+      const bText = b.children[colIdx]?.textContent.trim().toLowerCase() || '';
+      
       // Numeric sort for Ticket ID if possible
       if (column === 'key') {
         // Try to extract number from KEY-123
@@ -975,19 +987,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Remove all rows
-    while (tBody.firstChild) {
-      tBody.removeChild(tBody.firstChild);
+    while (tableBody.firstChild) {
+      tableBody.removeChild(tableBody.firstChild);
     }
     // Re-add sorted rows
-    tBody.append(...rows);
+    tableBody.append(...rows);
   }
 
   function updateSortIcons(table, column, asc) {
-    const headers = table.querySelectorAll('th.sortable');
-    headers.forEach(th => {
-      const icon = th.querySelector('.sort-icon');
+    const headers = table.querySelectorAll('.header-cell.sortable');
+    headers.forEach(header => {
+      const icon = header.querySelector('.sort-icon');
       if (!icon) return;
-      if (th.dataset.column === column) {
+      if (header.dataset.column === column) {
         icon.textContent = asc ? '\u25B2' : '\u25BC'; // ▲ or ▼
       } else {
         icon.textContent = '';
@@ -999,9 +1011,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('resultsTable');
     if (!table) return;
     let currentSort = { column: null, asc: true };
-    table.querySelectorAll('th.sortable').forEach(th => {
-      th.addEventListener('click', function () {
-        const column = th.dataset.column;
+    table.querySelectorAll('.header-cell.sortable').forEach(header => {
+      header.addEventListener('click', function () {
+        const column = header.dataset.column;
         if (!column) return;
         const asc = currentSort.column === column ? !currentSort.asc : true;
         sortTableByColumn(table, column, asc);
@@ -1033,18 +1045,20 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update table
         const resultsTable = document.getElementById('resultsTable');
         if (resultsTable && data.results) {
-          const tbody = resultsTable.querySelector('tbody');
-          if (tbody) {
-            tbody.innerHTML = '';
+          const tableBody = resultsTable.querySelector('.table-body');
+          if (tableBody) {
+            tableBody.innerHTML = '';
             data.results.forEach(r => {
               const selected = data.selected && data.selected.key === r.key;
-              tbody.innerHTML += `<tr data-key="${r.key}">
-                <td><input type="radio" name="selected_ticket" value="${r.key}" data-url="${r.url}" data-summary="${r.summary.replace(/"/g, '&quot;')}"${selected ? ' checked' : ''}></td>
-                <td><a href="${r.url}" target="_blank">${r.key}</a></td>
-                <td>${r.summary}</td>
-                <td>${r.assignee}</td>
-                <td>${r.status}</td>
-              </tr>`;
+              const statusClass = r.status === 'Done' || r.status === 'Closed' ? 'success' : 
+                                 r.status === 'In Progress' ? 'warning' : 'info';
+              tableBody.innerHTML += `<div class="table-row" data-key="${r.key}">
+                <div class="table-cell select-col"><input type="radio" name="selected_ticket" value="${r.key}" data-url="${r.url}" data-summary="${r.summary.replace(/"/g, '&quot;')}"${selected ? ' checked' : ''} class="form-check-input"></div>
+                <div class="table-cell ticket-col"><a href="${r.url}" target="_blank" class="fw-semibold">${r.key}</a></div>
+                <div class="table-cell summary-col">${r.summary}</div>
+                <div class="table-cell assignee-col"><span class="badge bg-secondary">${r.assignee}</span></div>
+                <div class="table-cell status-col"><span class="badge bg-${statusClass}">${r.status}</span></div>
+              </div>`;
             });
           }
         }
