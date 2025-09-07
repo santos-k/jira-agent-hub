@@ -28,6 +28,35 @@
   overflow-y: auto;
 }
 
+/* Fixed table header with scrollable body */
+.table-responsive.scrollable-5.has-many-rows table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-responsive.scrollable-5.has-many-rows thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bs-body-bg);
+}
+
+.table-responsive.scrollable-5.has-many-rows th {
+  background-color: var(--bs-table-bg);
+  border-bottom: 2px solid var(--bs-border-color);
+}
+
+/* Clickable rows */
+#resultsTable tbody tr {
+  cursor: pointer;
+}
+
+#resultsTable tbody tr a {
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
 /* Small responsive tweaks */
 @media (max-width: 576px) {
   .user-avatar { width: 36px; height: 36px; font-size: 0.9rem; }

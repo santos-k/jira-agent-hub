@@ -140,6 +140,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       });
     });
+
+    // Make entire row clickable for selection (except links)
+    const tableRows = document.querySelectorAll('#resultsTable tbody tr');
+    tableRows.forEach(row => {
+      row.addEventListener('click', function(e) {
+        // Only proceed if the click wasn't on a link or the radio button itself
+        if (e.target.tagName !== 'A' && e.target.tagName !== 'INPUT') {
+          const radio = this.querySelector('input[type="radio"]');
+          if (radio && !radio.checked) {
+            radio.checked = true;
+            // Trigger the change event manually
+            const changeEvent = new Event('change', { bubbles: true });
+            radio.dispatchEvent(changeEvent);
+          }
+        }
+      });
+    });
   }
 
   // Centralized function to update selected ticket UI and re-attach handlers
