@@ -640,6 +640,300 @@ def manual_prompt_scenarios():
         logger.error(f"Manual prompt error: {e}")
         return jsonify({'error': 'internal error'}), 500
 
+@logutil.log_exceptions
+def text_to_adf(text):
+    """Convert plain text to Atlassian Document Format (ADF).
+    
+    Args:
+        text: Plain text to convert
+        
+    Returns:
+        Dict: ADF-formatted document structure
+    """
+    if not text:
+        return {
+            "type": "doc",
+            "version": 1,
+            "content": []
+        }
+    
+    # Split text into paragraphs
+    paragraphs = text.split('\n\n')
+    content = []
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Check if this is a list (scenarios)
+        lines = paragraph.split('\n')
+        if len(lines) > 1 and any(line.strip().startswith(('1.', '2.', '-', '•', '*')) for line in lines):
+            # Create a bullet list
+            list_items = []
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                # Remove list markers
+                clean_line = re.sub(r'^(?:\d+\.|-|•|\*)\s*', '', line)
+                if clean_line:
+                    list_items.append({
+                        "type": "listItem",
+                        "content": [{
+                            "type": "paragraph",
+                            "content": [{
+                                "type": "text",
+                                "text": clean_line
+                            }]
+                        }]
+                    })
+            
+            if list_items:
+                content.append({
+                    "type": "bulletList",
+                    "content": list_items
+                })
+        else:
+            # Regular paragraph
+            content.append({
+                "type": "paragraph",
+                "content": [{
+                    "type": "text",
+                    "text": paragraph
+                }]
+            })
+    
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": content
+    }
+
+@logutil.log_exceptions
+def update_jira_issue_description(issue_key, new_description):
+    """Update a Jira issue's description using the Jira REST API.
+    
+    Args:
+        issue_key: The Jira issue key (e.g., PROJECT-123)
+        new_description: The new description in ADF format
+        
+    Returns:
+        Tuple: (success: bool, error_message: str or None)
+    """
+    try:
+        jira_url = session.get('jira_url')
+        email = session.get('jira_email')
+        api_token = session.get('jira_api_token')
+        
+        if not all([jira_url, email, api_token]):
+            return False, 'Jira connection not available.'
+        
+        # Jira REST API endpoint for updating issue
+        api_endpoint = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
+        
+        # Prepare the update payload
+        payload = {
+            "fields": {
+                "description": new_description
+            }
+        }
+        
+        # Make the API request
+        response = requests.put(
+            api_endpoint,
+            json=payload,
+            auth=jira_auth_headers(email, api_token),
+            headers={'Content-Type': 'application/json'},
+            timeout=30
+        )
+        
+        if response.status_code == 204:  # Success - No Content
+            logger.info(f"Successfully updated issue {issue_key} description")
+            return True, None
+        else:
+            error_msg = f"Failed to update issue {issue_key}: HTTP {response.status_code}"
+            if response.text:
+                try:
+                    error_data = response.json()
+                    if 'errors' in error_data:
+                        error_details = ', '.join([f"{k}: {v}" for k, v in error_data['errors'].items()])
+                        error_msg += f" - {error_details}"
+                    elif 'errorMessages' in error_data:
+                        error_msg += f" - {', '.join(error_data['errorMessages'])}"
+                except:
+                    error_msg += f" - {response.text[:200]}"
+            
+            logger.error(error_msg)
+            return False, error_msg
+            
+    except requests.exceptions.Timeout:
+        error_msg = 'Request timed out while updating Jira issue.'
+        logger.error(error_msg)
+        return False, error_msg
+    except requests.exceptions.RequestException as e:
+        error_msg = f'Network error while updating Jira issue: {str(e)}'
+        logger.error(error_msg)
+        return False, error_msg
+    except Exception as e:
+        error_msg = f'Unexpected error while updating Jira issue: {str(e)}'
+        logger.exception(error_msg)
+        return False, error_msg
+
+@app.route('/api/update_ticket_with_scenarios', methods=['POST'])
+def update_ticket_with_scenarios():
+    """Update the selected Jira ticket by appending generated test scenarios to its description."""
+    try:
+        # Check if user is connected to Jira
+        if not session.get('jira_connected'):
+            logger.warning("Update ticket attempted without Jira connection")
+            return jsonify({'success': False, 'error': 'Not connected to Jira.'}), 403
+        
+        # Get selected ticket and test scenarios from session
+        selected = session.get('selected_ticket', {})
+        if not selected or not selected.get('key'):
+            logger.warning("Update ticket attempted without selected ticket")
+            return jsonify({'success': False, 'error': 'No ticket selected.'}), 400
+        
+        test_scenarios = selected.get('test_scenarios', [])
+        if not test_scenarios:
+            logger.warning("Update ticket attempted without test scenarios")
+            return jsonify({'success': False, 'error': 'No test scenarios available to add.'}), 400
+        
+        issue_key = selected['key']
+        
+        # Fetch current issue description from Jira
+        jira_url = session.get('jira_url')
+        email = session.get('jira_email')
+        api_token = session.get('jira_api_token')
+        
+        try:
+            issue_api = f"{jira_url}/rest/api/3/issue/{issue_key}"
+            response = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch issue {issue_key}: HTTP {response.status_code}")
+                return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
+            
+            issue_data = response.json()
+            current_description = issue_data.get('fields', {}).get('description')
+            
+        except Exception as e:
+            logger.error(f"Error fetching issue {issue_key}: {str(e)}")
+            return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
+        
+        # Create the test scenarios HTML to append
+        scenarios_html = "<hr><h3>Generated Test Scenarios</h3><ol>"
+        for scenario in test_scenarios:
+            scenarios_html += f"<li>{scenario}</li>"
+        scenarios_html += "</ol>"
+        
+        # Create new description in ADF format
+        if current_description:
+            if isinstance(current_description, str):
+                # Plain text description - convert to ADF with appended scenarios
+                new_description_text = current_description + "\n\n--- Generated Test Scenarios ---\n\n"
+                for i, scenario in enumerate(test_scenarios, 1):
+                    new_description_text += f"{i}. {scenario}\n"
+                new_description_adf = text_to_adf(new_description_text)
+            else:
+                # ADF description - append scenarios as new content
+                new_description_adf = current_description.copy()
+                if 'content' not in new_description_adf:
+                    new_description_adf['content'] = []
+                
+                # Add separator
+                new_description_adf['content'].append({
+                    "type": "rule"
+                })
+                
+                # Add heading
+                new_description_adf['content'].append({
+                    "type": "heading",
+                    "attrs": {"level": 3},
+                    "content": [{
+                        "type": "text",
+                        "text": "Generated Test Scenarios"
+                    }]
+                })
+                
+                # Add scenarios as numbered list
+                list_items = []
+                for scenario in test_scenarios:
+                    list_items.append({
+                        "type": "listItem",
+                        "content": [{
+                            "type": "paragraph",
+                            "content": [{
+                                "type": "text",
+                                "text": scenario
+                            }]
+                        }]
+                    })
+                
+                new_description_adf['content'].append({
+                    "type": "orderedList",
+                    "content": list_items
+                })
+        else:
+            # No existing description - create new one with just scenarios
+            scenarios_text = "Generated Test Scenarios\n\n"
+            for i, scenario in enumerate(test_scenarios, 1):
+                scenarios_text += f"{i}. {scenario}\n"
+            new_description_adf = text_to_adf(scenarios_text)
+        
+        # Try MCP first if available, then fallback to direct API
+        success = False
+        error_message = None
+        
+        # Try MCP update if available
+        if HAS_MCP and session.get("mcp_enabled"):
+            try:
+                from mcp.client import MCPClient
+                client = MCPClient()
+                result = client.update_issue(issue_key, description=new_description_adf)
+                
+                if result and not result.get('error'):
+                    success = True
+                    logger.info(f"Successfully updated issue {issue_key} via MCP")
+                else:
+                    error_message = result.get('error', 'MCP update failed')
+                    logger.warning(f"MCP update failed for {issue_key}: {error_message}")
+            except Exception as e:
+                error_message = f"MCP update error: {str(e)}"
+                logger.error(f"MCP update failed for {issue_key}: {str(e)}")
+        
+        # Fallback to direct Jira API if MCP failed or unavailable
+        if not success:
+            success, error_message = update_jira_issue_description(issue_key, new_description_adf)
+        
+        if success:
+            # Update the session with new description info
+            if isinstance(current_description, str):
+                selected['description'] = current_description + "\n\n--- Generated Test Scenarios ---\n\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(test_scenarios, 1))
+            else:
+                selected['description'] = adf_to_text(new_description_adf)
+            selected['description_html'] = None  # Clear cached HTML to force refresh
+            session['selected_ticket'] = selected
+            
+            logger.info(f"Successfully updated issue {issue_key} with test scenarios")
+            return jsonify({
+                'success': True, 
+                'message': f'Successfully updated {issue_key} with {len(test_scenarios)} test scenarios.'
+            }), 200
+        else:
+            return jsonify({
+                'success': False, 
+                'error': error_message or 'Failed to update ticket.'
+            }), 500
+            
+    except Exception as e:
+        logger.exception(f"Unexpected error in update_ticket_with_scenarios: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': 'Internal server error occurred while updating ticket.'
+        }), 500
+
 def generate_scenarios_with_ai(description, prompt=None):
     if not description:
         logger.error('No description provided for scenario generation')

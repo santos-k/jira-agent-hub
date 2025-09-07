@@ -1,0 +1,61 @@
+<!-- Update Ticket Confirmation Modal -->
+<div class="modal fade" id="updateTicketModal" tabindex="-1" aria-labelledby="updateTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="updateTicketModalLabel">
+          <i class="bi bi-upload"></i>
+          Confirm Ticket Update
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          <strong>Update Confirmation</strong>
+        </div>
+        
+        <p>You are about to update the following Jira ticket by adding the generated test scenarios to its description:</p>
+        
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-title mb-1">
+              <i class="bi bi-ticket"></i>
+              <span id="updateTicketKey">-</span>
+            </h6>
+            <p class="card-text text-muted mb-0" id="updateTicketSummary">-</p>
+          </div>
+        </div>
+        
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="bi bi-list-check"></i>
+            Test Scenarios to Add (<span id="updateScenariosCount">0</span>)
+          </div>
+          <div class="card-body">
+            <div class="scenario-preview" style="max-height: 200px; overflow-y: auto;">
+              <ol id="updateScenariosList" class="mb-0">
+                <!-- Scenarios will be populated here -->
+              </ol>
+            </div>
+          </div>
+        </div>
+        
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle"></i>
+          <strong>Important:</strong> The test scenarios will be appended to the existing ticket description. This action cannot be undone from this interface.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i>
+          Cancel
+        </button>
+        <button type="button" class="btn btn-success" id="confirmUpdateTicket">
+          <i class="bi bi-upload"></i>
+          <span class="update-btn-text">Update Ticket</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

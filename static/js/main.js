@@ -230,6 +230,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 <i class="bi bi-chat-square-text"></i>
                 <span class="d-none d-md-inline ms-1">Execute Manual</span>
               </button>
+              <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
+                <i class="bi bi-upload"></i>
+                <span class="d-none d-md-inline ms-1">Update Ticket</span>
+              </button>
             </div>
             <ol id="testScenariosList">`;
       selected.test_scenarios.forEach(scenario => {
@@ -419,6 +423,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <i class="bi bi-chat-square-text"></i>
                     <span class="d-none d-md-inline ms-1">Execute Manual</span>
                   </button>
+                  <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
+                    <i class="bi bi-upload"></i>
+                    <span class="d-none d-md-inline ms-1">Update Ticket</span>
+                  </button>
                 </div>
                 <ol id="testScenariosList">`;
 
@@ -469,6 +477,139 @@ document.addEventListener('DOMContentLoaded', function () {
   // Manual Prompt handlers - now using inline chat
   function attachManualPromptHandlers() {
     // Note: Manual prompt now uses inline chat, no modal handlers needed
+  }
+
+  // Update Ticket button handler
+  function attachUpdateTicketHandler() {
+    // Use event delegation since buttons are added dynamically
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('update-ticket-btn') || e.target.closest('.update-ticket-btn')) {
+        e.preventDefault();
+        handleUpdateTicketClick();
+      }
+    });
+  }
+
+  function handleUpdateTicketClick() {
+    // Get selected ticket and scenarios from session/DOM
+    const selectedInfo = document.getElementById('selectedInfo');
+    if (!selectedInfo) {
+      showAlert('No ticket information available.', 'danger');
+      return;
+    }
+
+    const testScenariosList = document.getElementById('testScenariosList');
+    if (!testScenariosList) {
+      showAlert('No test scenarios found. Please generate test scenarios first.', 'warning');
+      return;
+    }
+
+    // Extract scenarios from the DOM
+    const scenarios = Array.from(testScenariosList.querySelectorAll('li')).map(li => li.textContent.trim()).filter(text => text);
+    
+    if (scenarios.length === 0) {
+      showAlert('No test scenarios available to add to the ticket.', 'warning');
+      return;
+    }
+
+    // Extract ticket information
+    const ticketKeyElement = selectedInfo.querySelector('a[href*="/browse/"]');
+    const ticketSummaryElement = selectedInfo.querySelector('.card-header');
+    
+    if (!ticketKeyElement) {
+      showAlert('Unable to identify the selected ticket.', 'danger');
+      return;
+    }
+
+    const ticketKey = ticketKeyElement.textContent.trim();
+    const ticketSummary = ticketSummaryElement ? 
+      ticketSummaryElement.textContent.replace(/Selected:/g, '').replace(ticketKey, '').replace('—', '').trim() 
+      : 'Unknown';
+
+    // Populate modal with ticket and scenario information
+    populateUpdateModal(ticketKey, ticketSummary, scenarios);
+    
+    // Show the confirmation modal
+    const modal = new bootstrap.Modal(document.getElementById('updateTicketModal'));
+    modal.show();
+  }
+
+  function populateUpdateModal(ticketKey, ticketSummary, scenarios) {
+    // Update modal content
+    document.getElementById('updateTicketKey').textContent = ticketKey;
+    document.getElementById('updateTicketSummary').textContent = ticketSummary;
+    document.getElementById('updateScenariosCount').textContent = scenarios.length;
+    
+    // Populate scenarios list in modal
+    const scenariosList = document.getElementById('updateScenariosList');
+    scenariosList.innerHTML = '';
+    scenarios.forEach(scenario => {
+      const li = document.createElement('li');
+      li.textContent = scenario;
+      scenariosList.appendChild(li);
+    });
+  }
+
+  function attachUpdateConfirmHandler() {
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    if (confirmButton) {
+      confirmButton.addEventListener('click', function() {
+        performTicketUpdate();
+      });
+    }
+  }
+
+  function performTicketUpdate() {
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    const buttonText = confirmButton.querySelector('.update-btn-text');
+    const buttonIcon = confirmButton.querySelector('i');
+    
+    // Disable button and show loading state
+    confirmButton.disabled = true;
+    if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split';
+    if (buttonText) buttonText.textContent = 'Updating...';
+    
+    // Send update request to backend
+    fetch('/api/update_ticket_with_scenarios', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    })
+    .then(async response => {
+      const data = await response.json().catch(() => ({}));
+      
+      // Re-enable button
+      confirmButton.disabled = false;
+      if (buttonIcon) buttonIcon.className = 'bi bi-upload';
+      if (buttonText) buttonText.textContent = 'Update Ticket';
+      
+      if (response.ok && data.success) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('updateTicketModal'));
+        if (modal) modal.hide();
+        
+        // Show success message using existing alert system
+        showAlert(data.message || 'Ticket updated successfully with test scenarios!', 'success');
+        
+        // Optionally refresh the selected ticket to show updated description
+        // The session has been updated on the backend, so next refresh will show new content
+      } else {
+        // Show error message using existing alert system
+        const errorMsg = data.error || 'Failed to update ticket. Please try again.';
+        showAlert(errorMsg, 'danger');
+      }
+    })
+    .catch(error => {
+      // Re-enable button
+      confirmButton.disabled = false;
+      if (buttonIcon) buttonIcon.className = 'bi bi-upload';
+      if (buttonText) buttonText.textContent = 'Update Ticket';
+      
+      console.error('Update ticket error:', error);
+      showAlert('Network error occurred while updating ticket. Please try again.', 'danger');
+    });
   }
 
   // Inline chat functionality
@@ -912,6 +1053,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initialize handlers
   attachSelectionHandlers();
   attachGenerateScenariosHandler();
+  attachUpdateTicketHandler();
+  attachUpdateConfirmHandler();
   attachCollapseHandlers();
   attachTableSortHandlers();
   autoDismissAlerts();
