@@ -141,12 +141,12 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
-    // Make entire row clickable for selection (except links)
+    // Make entire row clickable for selection (except links and radio buttons)
     const tableRows = document.querySelectorAll('#resultsTable tbody tr');
     tableRows.forEach(row => {
       row.addEventListener('click', function(e) {
-        // Only proceed if the click wasn't on a link or the radio button itself
-        if (e.target.tagName !== 'A' && e.target.tagName !== 'INPUT') {
+        // Only proceed if the click wasn't on a link, radio button, or any input element
+        if (e.target.tagName !== 'A' && e.target.tagName !== 'INPUT' && e.target.type !== 'radio') {
           const radio = this.querySelector('input[type="radio"]');
           if (radio && !radio.checked) {
             radio.checked = true;
@@ -156,6 +156,9 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
       });
+      
+      // Add visual feedback for clickable rows
+      row.style.cursor = 'pointer';
     });
   }
 
@@ -178,9 +181,15 @@ document.addEventListener('DOMContentLoaded', function () {
           <i class="bi bi-chevron-down" id="selectedInfoIcon"></i>
           Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}
         </button>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-sm btn-outline-danger" id="deselectBtn">Deselect</button>
-          <button type="button" class="btn btn-sm btn-primary" id="generateScenariosBtn">Generate Test Scenarios</button>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-danger action-btn" id="deselectBtn" title="Deselect ticket">
+            <i class="bi bi-x-circle"></i>
+            <span class="d-none d-md-inline ms-1">Deselect</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-primary action-btn" id="generateScenariosBtn" title="Generate test scenarios">
+            <i class="bi bi-magic"></i>
+            <span class="d-none d-md-inline ms-1">Generate Test Scenarios</span>
+          </button>
         </div>
       </div>
       <div class="collapse show" id="selectedInfoContent">
@@ -189,12 +198,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (selected.description_html || selected.description) {
       infoHtml += `<div class="card mt-2">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="true" aria-controls="descriptionContent">
-            <i class="bi bi-chevron-down" id="descriptionIcon"></i>
+          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="false" aria-controls="descriptionContent">
+            <i class="bi bi-chevron-right" id="descriptionIcon"></i>
             Description
           </button>
         </div>
-        <div class="collapse show" id="descriptionContent">
+        <div class="collapse" id="descriptionContent">
           <div class="card-body">
             <div class="adf-desc" ${selected.description && !selected.description_html ? 'style="white-space: pre-wrap;"' : ''}></div>
           </div>
@@ -212,6 +221,19 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         <div class="collapse show" id="testScenariosContent">
           <div class="card-body">
+            <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+              <button class="btn btn-sm btn-outline-primary action-btn regenerateBtn" title="Regenerate scenarios">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span class="d-none d-md-inline ms-1">Regenerate</span>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
+                <i class="bi bi-clipboard"></i>
+                <span class="d-none d-md-inline ms-1">Copy All</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-info action-btn manual-prompt-icon" id="manualPromptBtn" title="Execute manual prompt">
+                <i class="bi bi-chat-square-text"></i>
+              </button>
+            </div>
             <ol id="testScenariosList">`;
       selected.test_scenarios.forEach(scenario => {
         infoHtml += `<li>${scenario}</li>`;
@@ -219,8 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
       infoHtml += `</ol></div></div></div>`;
     }
 
-    infoHtml += `<button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="manualPromptBtn">Execute Manual Prompt</button>
-        </div>
+    infoHtml += `</div>
       </div>
     </div>`;
 
@@ -346,7 +367,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         btn.disabled = true;
-        btn.textContent = 'Generating...';
+        const originalIcon = btn.querySelector('i');
+        const originalText = btn.querySelector('span');
+        if (originalIcon) originalIcon.className = 'bi bi-magic spinner';
+        if (originalText) originalText.textContent = 'Generating...';
 
         // Remove any previous error alerts
         const oldAlerts = selInfo.querySelectorAll('.alert-warning, .alert-danger');
@@ -362,7 +386,26 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(async res => {
           btn.disabled = false;
-          btn.textContent = 'Regenerate Test Scenarios';
+          if (originalIcon) originalIcon.className = 'bi bi-magic';
+          if (originalText) originalText.textContent = 'Generate Test Scenarios';
+          
+          // Also reset ALL regenerate buttons if they exist
+          console.log('Resetting all regenerate buttons after successful generation');
+          const regenerateBtns = document.querySelectorAll('.regenerateBtn');
+          regenerateBtns.forEach(regenerateBtn => {
+            const regenIcon = regenerateBtn.querySelector('i');
+            const regenText = regenerateBtn.querySelector('span');
+            if (regenIcon) {
+              console.log('Resetting regenerate icon to normal state');
+              regenIcon.className = 'bi bi-arrow-clockwise';
+            }
+            if (regenText) regenText.textContent = 'Regenerate';
+            regenerateBtn.disabled = false;
+          });
+          
+          // Clear the trigger data attribute
+          btn.removeAttribute('data-triggered-by');
+          
           const data = await res.json().catch(() => ({}));
 
           if (!res.ok || !data.scenarios) {
@@ -383,12 +426,21 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="collapse show" id="testScenariosContent">
               <div class="card-body">
+                <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                  <button class="btn btn-sm btn-outline-primary action-btn regenerateBtn" title="Regenerate scenarios">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span class="d-none d-md-inline ms-1">Regenerate</span>
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
+                    <i class="bi bi-clipboard"></i>
+                    <span class="d-none d-md-inline ms-1">Copy All</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-info action-btn manual-prompt-icon" id="manualPromptBtn" title="Execute manual prompt">
+                    <i class="bi bi-chat-square-text"></i>
+                  </button>
+                </div>
                 <ol id="testScenariosList">`;
 
-          scenariosHtml += `<div class="d-flex justify-content-end mb-2">
-            <button class="btn btn-sm btn-outline-primary me-2 regenerateBtn" title="Regenerate scenarios">Regenerate</button>
-            <button class="btn btn-sm btn-outline-secondary copyAllBtn" title="Copy all scenarios">Copy All</button>
-          </div>`;
           // Filter out any introductory text that's not actually a test scenario
           const filteredScenarios = data.scenarios.filter(scenario => {
             // Skip introductory text like "Here are concise, end-to-end test scenarios..."
@@ -407,23 +459,39 @@ document.addEventListener('DOMContentLoaded', function () {
             oldTestCard.parentElement.remove();
           }
 
-          // Insert before the manual prompt button
-          const manualBtn = selInfo.querySelector('#manualPromptBtn');
-          if (manualBtn) {
-            manualBtn.insertAdjacentHTML('beforebegin', scenariosHtml);
-          } else {
-            const cardBody = selInfo.querySelector('.card-body');
-            if (cardBody) {
-              cardBody.insertAdjacentHTML('beforeend', scenariosHtml);
-            }
+          // Insert the scenarios section
+          const cardBody = selInfo.querySelector('.card-body');
+          if (cardBody) {
+            cardBody.insertAdjacentHTML('beforeend', scenariosHtml);
           }
 
           // Attach collapse handlers for the new test scenarios section
           attachCollapseHandlers();
+          // Re-attach manual prompt handlers after adding new button
+          attachManualPromptHandlers();
         })
         .catch(err => {
           btn.disabled = false;
-          btn.textContent = 'Generate Test Scenarios';
+          if (originalIcon) originalIcon.className = 'bi bi-magic';
+          if (originalText) originalText.textContent = 'Generate Test Scenarios';
+          
+          // Also reset ALL regenerate buttons if they exist
+          console.log('Resetting all regenerate buttons after error');
+          const regenerateBtns = document.querySelectorAll('.regenerateBtn');
+          regenerateBtns.forEach(regenerateBtn => {
+            const regenIcon = regenerateBtn.querySelector('i');
+            const regenText = regenerateBtn.querySelector('span');
+            if (regenIcon) {
+              console.log('Resetting regenerate icon after error');
+              regenIcon.className = 'bi bi-arrow-clockwise';
+            }
+            if (regenText) regenText.textContent = 'Regenerate';
+            regenerateBtn.disabled = false;
+          });
+          
+          // Clear the trigger data attribute
+          btn.removeAttribute('data-triggered-by');
+          
           selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">Network error: ${err.message}</div>`);
         });
       })
@@ -433,157 +501,287 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
-  // Manual Prompt Modal logic
+  // Manual Prompt handlers - now using inline chat
   function attachManualPromptHandlers() {
-    const manualPromptBtn = document.getElementById('manualPromptBtn');
-    const manualPromptModal = document.getElementById('manualPromptModal');
-    const manualPromptInput = document.getElementById('manualPromptInput');
-    const submitManualPromptBtn = document.getElementById('submitManualPromptBtn');
-    const manualPromptError = document.getElementById('manualPromptError');
-    let bsManualPromptModal = null;
-    if (manualPromptModal) {
-      bsManualPromptModal = bootstrap.Modal.getOrCreateInstance(manualPromptModal);
+    // Note: Manual prompt now uses inline chat, no modal handlers needed
+  }
+
+  // Inline chat functionality
+  function toggleInlineChat(triggerButton) {
+    const scenariosCard = triggerButton.closest('.card');
+    if (!scenariosCard) return;
+    
+    let chatContainer = scenariosCard.querySelector('.inline-chat');
+    
+    if (chatContainer) {
+      // Toggle existing chat
+      if (chatContainer.style.display === 'none') {
+        chatContainer.style.display = 'flex';
+        triggerButton.style.backgroundColor = 'var(--bs-primary)';
+        triggerButton.style.color = 'white';
+      } else {
+        chatContainer.style.display = 'none';
+        triggerButton.style.backgroundColor = '';
+        triggerButton.style.color = '';
+      }
+    } else {
+      // Create new chat interface
+      chatContainer = createInlineChat();
+      scenariosCard.querySelector('.card-body').appendChild(chatContainer);
+      triggerButton.style.backgroundColor = 'var(--bs-primary)';
+      triggerButton.style.color = 'white';
     }
-    if (manualPromptBtn && bsManualPromptModal) {
-      manualPromptBtn.onclick = function () {
-        manualPromptInput.value = '';
-        manualPromptError.style.display = 'none';
-        manualPromptError.textContent = '';
-        submitManualPromptBtn.disabled = false;
-        submitManualPromptBtn.textContent = 'Submit/Ask';
-        bsManualPromptModal.show();
-      };
-    }
-    if (submitManualPromptBtn && bsManualPromptModal) {
-      submitManualPromptBtn.onclick = function () {
-        const prompt = manualPromptInput.value.trim();
-        if (!prompt) {
-          manualPromptError.textContent = 'Prompt cannot be empty.';
-          manualPromptError.style.display = 'block';
-          return;
-        }
-        submitManualPromptBtn.disabled = true;
-        submitManualPromptBtn.textContent = 'Processing...';
-        manualPromptError.style.display = 'none';
-        // Get ticket description
-        const selInfo = document.getElementById('selectedInfo');
-        let description = '';
-        const descDiv = selInfo ? selInfo.querySelector('.adf-desc') : null;
-        if (descDiv) {
-          description = descDiv.textContent || descDiv.innerText || '';
-        }
-        fetch('/api/manual_prompt_scenarios', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ description: description, prompt: prompt })
-        })
-        .then(async res => {
-          submitManualPromptBtn.disabled = false;
-          submitManualPromptBtn.textContent = 'Submit/Ask';
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.scenarios) {
-            manualPromptError.textContent = data.error || 'Failed to generate scenarios.';
-            manualPromptError.style.display = 'block';
-            return;
-          }
-          bsManualPromptModal.hide();
-          // Update scenarios section
-          const testScenariosList = document.getElementById('testScenariosList');
-          if (testScenariosList) {
-            testScenariosList.innerHTML = '';
-            // Add Copy All and Regenerate buttons
-            const controlsDiv = document.createElement('div');
-            controlsDiv.className = 'd-flex justify-content-end mb-2';
-            controlsDiv.innerHTML = `
-              <button class="btn btn-sm btn-outline-primary me-2 regenerateBtn" title="Regenerate scenarios">Regenerate</button>
-              <button class="btn btn-sm btn-outline-secondary copyAllBtn" title="Copy all scenarios">Copy All</button>
-            `;
-            testScenariosList.appendChild(controlsDiv);
-            
-            // Filter out any introductory text that's not actually a test scenario
-            const filteredScenarios = data.scenarios.filter(scenario => {
-              // Skip introductory text like "Here are concise, end-to-end test scenarios..."
-              return !scenario.toLowerCase().includes("here are") && 
-                     !scenario.toLowerCase().includes("test scenario");
-            });
-            
-            // Add scenarios
-            filteredScenarios.forEach(s => {
-              const li = document.createElement('li');
-              li.textContent = s;
-              testScenariosList.appendChild(li);
-            });
-          }
-          // Update history section
-          const scenarioHistoryList = document.getElementById('scenarioHistoryList');
-          if (scenarioHistoryList && data.history) {
-            // Filter out any introductory text from history scenarios
-            const filteredHistoryScenarios = data.history.scenarios.filter(scenario => {
-              return !scenario.toLowerCase().includes("here are") && 
-                     !scenario.toLowerCase().includes("test scenario");
-            });
-            
-            const histLi = document.createElement('li');
-            histLi.innerHTML = `<span class="text-muted">${data.history.prompt}</span><ol>${filteredHistoryScenarios.map(s => `<li>${s}</li>`).join('')}</ol>`;
-            scenarioHistoryList.appendChild(histLi);
-          }
-        })
-        .catch(err => {
-          submitManualPromptBtn.disabled = false;
-          submitManualPromptBtn.textContent = 'Submit/Ask';
-          manualPromptError.textContent = 'Network error: ' + err.message;
-          manualPromptError.style.display = 'block';
-        });
-      };
-    }
-    // Copy/Edit/Regenerate actions
-    document.addEventListener('click', function(e) {
-      if (e.target.classList.contains('copyAllBtn')) {
-        const scenariosList = document.getElementById('testScenariosList');
-        if (scenariosList) {
-          // Get all list items but skip the first one if it contains the controls div
-          const items = Array.from(scenariosList.querySelectorAll('li')).filter(item => {
-            // Skip items that contain buttons (these are control elements, not scenarios)
-            return !item.querySelector('button');
-          });
-          
-          let allText = '';
-          items.forEach((item, index) => {
-            allText += (index + 1) + '. ' + item.textContent + '\n';
-          });
-          navigator.clipboard.writeText(allText);
-          e.target.textContent = 'Copied ✅';
-          setTimeout(() => { e.target.textContent = 'Copy All'; }, 1000);
-        }
-      } else if (e.target.classList.contains('regenerateBtn')) {
-        const generateBtn = document.getElementById('generateScenariosBtn');
-        if (generateBtn) {
-          generateBtn.click();
-        }
-      } else if (e.target.classList.contains('editScenarioBtn')) {
-        const li = e.target.parentElement;
-        const oldText = li.firstChild.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = oldText;
-        input.className = 'form-control form-control-sm';
-        li.innerHTML = '';
-        li.appendChild(input);
-        input.focus();
-        input.addEventListener('blur', function() {
-          li.innerHTML = input.value + ' <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button> <button class="btn btn-xs btn-link editScenarioBtn" title="Edit">✏️</button>';
-        });
-        input.addEventListener('keydown', function(ev) {
-          if (ev.key === 'Enter') {
-            input.blur();
-          }
-        });
+  }
+  
+  function createInlineChat() {
+    const chatContainer = document.createElement('div');
+    chatContainer.className = 'inline-chat';
+    chatContainer.innerHTML = `
+      <div class="inline-chat-header">
+        <span class="fw-bold">Manual Prompt Chat</span>
+        <button type="button" class="btn-close btn-sm" onclick="this.closest('.inline-chat').style.display='none'; document.querySelector('.manual-prompt-icon').style.backgroundColor=''; document.querySelector('.manual-prompt-icon').style.color='';"></button>
+      </div>
+      <div class="inline-chat-messages" id="inlineChatMessages">
+        <div class="inline-chat-message ai">
+          Hi! I can help you generate custom test scenarios. What would you like me to focus on?
+        </div>
+      </div>
+      <div class="inline-chat-input">
+        <div class="input-group">
+          <textarea id="inlineChatInput" class="form-control" rows="1" placeholder="Type your prompt here..."></textarea>
+          <button class="btn btn-primary chat-send-btn" type="button" onclick="sendInlineChatMessage()">
+            <i class="bi bi-send"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Auto-resize textarea
+    const textarea = chatContainer.querySelector('#inlineChatInput');
+    textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+    });
+    
+    // Handle Enter key
+    textarea.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendInlineChatMessage();
       }
     });
+    
+    return chatContainer;
   }
+  
+  window.sendInlineChatMessage = function() {
+    const input = document.getElementById('inlineChatInput');
+    const messages = document.getElementById('inlineChatMessages');
+    const sendBtn = input.nextElementSibling;
+    
+    if (!input || !messages) return;
+    
+    const prompt = input.value.trim();
+    if (!prompt) return;
+    
+    // Add user message
+    const userMsg = document.createElement('div');
+    userMsg.className = 'inline-chat-message user';
+    userMsg.textContent = prompt;
+    messages.appendChild(userMsg);
+    
+    // Clear input
+    input.value = '';
+    input.style.height = 'auto';
+    
+    // Show loading
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'inline-chat-message ai';
+    loadingMsg.innerHTML = '<i class="bi bi-three-dots spinner"></i> Generating scenarios...';
+    messages.appendChild(loadingMsg);
+    
+    // Disable send button
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="bi bi-hourglass spinner"></i>';
+    
+    // Scroll to bottom
+    messages.scrollTop = messages.scrollHeight;
+    
+    // Get description from the selected ticket
+    const selInfo = document.getElementById('selectedInfo');
+    let description = '';
+    const descDiv = selInfo ? selInfo.querySelector('.adf-desc') : null;
+    if (descDiv) {
+      description = descDiv.textContent || descDiv.innerText || '';
+    }
+    
+    // Send to backend
+    fetch('/api/manual_prompt_scenarios', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ description: description, prompt: prompt })
+    })
+    .then(async res => {
+      // Remove loading message
+      loadingMsg.remove();
+      
+      // Re-enable send button
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="bi bi-send"></i>';
+      
+      const data = await res.json().catch(() => ({}));
+      
+      if (!res.ok || !data.scenarios) {
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'inline-chat-message ai';
+        errorMsg.innerHTML = `<span class="text-danger">Error: ${data.error || 'Failed to generate scenarios.'}</span>`;
+        messages.appendChild(errorMsg);
+        return;
+      }
+      
+      // Add AI response
+      const aiMsg = document.createElement('div');
+      aiMsg.className = 'inline-chat-message ai';
+      aiMsg.innerHTML = `<strong>Generated ${data.scenarios.length} scenarios:</strong><br><br>` + 
+        data.scenarios.map((s, i) => `${i + 1}. ${s}`).join('<br>');
+      messages.appendChild(aiMsg);
+      
+      // Update the main scenarios list
+      const testScenariosList = document.getElementById('testScenariosList');
+      if (testScenariosList) {
+        // Clear existing scenarios but keep controls
+        const controlsDiv = testScenariosList.querySelector('.scenario-controls');
+        testScenariosList.innerHTML = '';
+        if (controlsDiv) {
+          testScenariosList.appendChild(controlsDiv);
+        }
+        
+        // Add new scenarios
+        data.scenarios.forEach(s => {
+          const li = document.createElement('li');
+          li.textContent = s;
+          testScenariosList.appendChild(li);
+        });
+      }
+      
+      // Scroll to bottom
+      messages.scrollTop = messages.scrollHeight;
+    })
+    .catch(err => {
+      // Remove loading message
+      loadingMsg.remove();
+      
+      // Re-enable send button
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="bi bi-send"></i>';
+      
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'inline-chat-message ai';
+      errorMsg.innerHTML = `<span class="text-danger">Network error: ${err.message}</span>`;
+      messages.appendChild(errorMsg);
+      
+      // Scroll to bottom
+      messages.scrollTop = messages.scrollHeight;
+    });
+  };
+
+  // Global click handler for scenario action buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('copyAllBtn') || e.target.closest('.copyAllBtn')) {
+      const button = e.target.classList.contains('copyAllBtn') ? e.target : e.target.closest('.copyAllBtn');
+      const scenariosList = document.getElementById('testScenariosList');
+      if (scenariosList) {
+        // Get all list items but skip the first one if it contains the controls div
+        const items = Array.from(scenariosList.querySelectorAll('li')).filter(item => {
+          // Skip items that contain buttons (these are control elements, not scenarios)
+          return !item.querySelector('button');
+        });
+        
+        let allText = '';
+        items.forEach((item, index) => {
+          allText += (index + 1) + '. ' + item.textContent + '\n';
+        });
+        
+        navigator.clipboard.writeText(allText).then(() => {
+          const originalIcon = button.querySelector('i');
+          const originalText = button.querySelector('span');
+          
+          // Change to checkmark
+          originalIcon.className = 'bi bi-check-circle';
+          if (originalText) originalText.textContent = 'Copied';
+          
+          // Reset after 2 seconds
+          setTimeout(() => {
+            originalIcon.className = 'bi bi-clipboard';
+            if (originalText) originalText.textContent = 'Copy All';
+          }, 2000);
+        }).catch(err => {
+          console.error('Failed to copy: ', err);
+        });
+      }
+    } else if (e.target.classList.contains('regenerateBtn') || e.target.closest('.regenerateBtn')) {
+      const button = e.target.classList.contains('regenerateBtn') ? e.target : e.target.closest('.regenerateBtn');
+      const generateBtn = document.getElementById('generateScenariosBtn');
+      
+      console.log('Regenerate button clicked:', button, 'Generate button:', generateBtn);
+      
+      if (generateBtn && !generateBtn.disabled && !button.disabled) {
+        console.log('Starting regeneration process...');
+        // Add loading state to regenerate button
+        const originalIcon = button.querySelector('i');
+        const originalText = button.querySelector('span');
+        
+        if (originalIcon) {
+          console.log('Setting spinner on regenerate icon');
+          originalIcon.className = 'bi bi-arrow-clockwise spinner';
+        }
+        if (originalText) originalText.textContent = 'Generating...';
+        button.disabled = true;
+        
+        // Also update main generate button
+        const mainIcon = generateBtn.querySelector('i');
+        const mainText = generateBtn.querySelector('span');
+        if (mainIcon) mainIcon.className = 'bi bi-magic spinner';
+        if (mainText) mainText.textContent = 'Generating...';
+        generateBtn.disabled = true;
+        
+        // Store reference to the clicked regenerate button for proper reset
+        generateBtn.setAttribute('data-triggered-by', 'regenerate');
+        
+        // Trigger the main generate button
+        console.log('Triggering main generate button click');
+        generateBtn.click();
+        
+        // Note: The loading state will be reset in the generate scenarios handler
+      } else {
+        console.log('Regenerate blocked - Generate button disabled or missing:', !!generateBtn, generateBtn?.disabled, button.disabled);
+      }
+    } else if (e.target.classList.contains('manual-prompt-icon') || e.target.closest('.manual-prompt-icon')) {
+      const button = e.target.classList.contains('manual-prompt-icon') ? e.target : e.target.closest('.manual-prompt-icon');
+      toggleInlineChat(button);
+    } else if (e.target.classList.contains('editScenarioBtn')) {
+      const li = e.target.parentElement;
+      const oldText = li.firstChild.textContent;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldText;
+      input.className = 'form-control form-control-sm';
+      li.innerHTML = '';
+      li.appendChild(input);
+      input.focus();
+      input.addEventListener('blur', function() {
+        li.innerHTML = input.value + ' <button class="btn btn-xs btn-link copyScenarioBtn" title="Copy">📋</button> <button class="btn btn-xs btn-link editScenarioBtn" title="Edit">✏️</button>';
+      });
+      input.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') {
+          input.blur();
+        }
+      });
+    }
+  });
 
   // Table sorting for search results
   function sortTableByColumn(table, column, asc = true) {
