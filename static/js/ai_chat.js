@@ -88,6 +88,43 @@ class AiChat {
                     });
             });
         }
+
+        // AI Logout functionality
+        const aiLogoutBtn = document.getElementById('aiLogoutBtn');
+        if (aiLogoutBtn) {
+            aiLogoutBtn.addEventListener('click', () => {
+                // Clear AI session
+                fetch('/api/ai/clear_session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear chat messages
+                        this.messageContainer.innerHTML = '';
+                        this.messages = [];
+                        
+                        // Add welcome message
+                        this.addMessage('AI session cleared successfully. You can start a new conversation.', 'ai');
+                        
+                        // Show brief status message
+                        this.showAiStatus('Session cleared', 'success');
+                        
+                        this.sendUIEvent({ category: 'ai_chat', event: 'session_cleared' });
+                    } else {
+                        this.showAiStatus('Failed to clear session', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing AI session:', error);
+                    this.showAiStatus('Error clearing session', 'danger');
+                });
+            });
+        }
     }
 
     async checkKeyAndOpen() {

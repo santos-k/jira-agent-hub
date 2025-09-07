@@ -1,5 +1,5 @@
-// Dark/Light mode toggle for Bootstrap
-// Uses localStorage to persist theme
+// Modern Dark/Light mode toggle for Bootstrap 5.3+
+// Uses data-bs-theme attribute and localStorage to persist theme
 
 document.addEventListener('DOMContentLoaded', function () {
   // Helper to send UI events to the backend
@@ -20,29 +20,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const themeBtn = document.getElementById('themeToggleBtn');
   const themeIcon = document.getElementById('themeIcon');
-  const themeLink = document.getElementById('bootstrapTheme');
-  const darkHref = 'https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-dark.min.css';
-  const lightHref = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css';
-
+  
   let previousTheme = null;
 
   function setTheme(mode) {
     if (!previousTheme) previousTheme = localStorage.getItem('theme') || getSystemTheme();
 
+    // Use Bootstrap 5.3+ data-bs-theme attribute
+    document.documentElement.setAttribute('data-bs-theme', mode);
+    
     if (mode === 'dark') {
-      themeLink.href = darkHref;
       themeIcon.className = 'bi bi-sun';
-      document.body.classList.add('bg-dark', 'text-light');
+      // Add dark mode classes for better compatibility
+      document.body.classList.add('bg-dark');
+      document.body.classList.remove('bg-light');
     } else {
-      themeLink.href = lightHref;
       themeIcon.className = 'bi bi-moon';
-      document.body.classList.remove('bg-dark', 'text-light');
+      // Add light mode classes
+      document.body.classList.add('bg-light');
+      document.body.classList.remove('bg-dark');
     }
+    
     localStorage.setItem('theme', mode);
 
     // Log the theme change
     sendUIEvent({ category: 'ui', event: 'theme_toggle', label: mode, extra: { from: previousTheme, to: mode } });
     previousTheme = mode;
+    
+    // Dispatch custom event for other components that might need to react to theme changes
+    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: mode } }));
   }
 
   // Detect system theme preference
@@ -57,6 +63,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Log initial theme state
   sendUIEvent({ category: 'ui', event: 'theme_init', label: initialTheme });
+
+  // Listen for system theme changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      setTheme(e.matches ? 'dark' : 'light');
+    }
+  });
 
   themeBtn.addEventListener('click', function () {
     const current = localStorage.getItem('theme') === 'dark' ? 'light' : 'dark';

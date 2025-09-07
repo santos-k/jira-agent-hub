@@ -2,9 +2,12 @@
 <div class="ai-chat-sidebar" id="aiChatSidebar" style="--ai-sidebar-width:400px;">
     <div class="ai-chat-header">
         <h5 class="mb-0">AI Chat</h5>
-        <div class="d-flex align-items-center">
-<!--            <div class="me-2 small text-muted">Responses rendered as Markdown/HTML</div>-->
-            <button type="button" class="btn-close" id="closeAiChat" aria-label="Close"></button>
+        <div class="d-flex align-items-center gap-2">
+            <!-- AI Logout button -->
+            <button type="button" class="btn btn-sm btn-outline-light ai-logout-btn" id="aiLogoutBtn" title="Clear AI session" style="border-radius: 50%; padding: 0.25rem 0.5rem;">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+            <button type="button" class="btn-close btn-close-white" id="closeAiChat" aria-label="Close"></button>
         </div>
     </div>
 

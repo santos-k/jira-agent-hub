@@ -546,6 +546,24 @@ def api_ai_clear_key():
         ai_logger.exception('Failed to clear API key')
         return jsonify({'error': 'internal error'}), 500
 
+# AI API: clear AI session data (chat history, last response, etc.)
+@app.route('/api/ai/clear_session', methods=['POST'])
+def api_ai_clear_session():
+    try:
+        # Clear AI-related session data
+        ai_keys = ['ai_history', 'last_ai_response']
+        cleared_count = 0
+        for key in ai_keys:
+            if key in session:
+                session.pop(key, None)
+                cleared_count += 1
+        
+        ai_logger.info('AI session data cleared: %d items removed', cleared_count)
+        return jsonify({'success': True, 'cleared_items': cleared_count}), 200
+    except Exception:
+        ai_logger.exception('Failed to clear AI session')
+        return jsonify({'error': 'internal error'}), 500
+
 @app.route('/ai', methods=['GET'])
 def ai_page():
     # Render a simple page that shows the last AI response and the history from session
@@ -822,65 +840,26 @@ def update_ticket_with_scenarios():
             logger.error(f"Error fetching issue {issue_key}: {str(e)}")
             return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
         
-        # Create the test scenarios HTML to append
-        scenarios_html = "<hr><h3>Generated Test Scenarios</h3><ol>"
-        for scenario in test_scenarios:
-            scenarios_html += f"<li>{scenario}</li>"
-        scenarios_html += "</ol>"
+        # Prepare the test scenarios text to append
+        scenarios_text = "\n\n--- Generated Test Scenarios ---\n\n"
+        for i, scenario in enumerate(test_scenarios, 1):
+            scenarios_text += f"{i}. {scenario}\n"
         
-        # Create new description in ADF format
+        # Create new description
         if current_description:
             if isinstance(current_description, str):
-                # Plain text description - convert to ADF with appended scenarios
-                new_description_text = current_description + "\n\n--- Generated Test Scenarios ---\n\n"
-                for i, scenario in enumerate(test_scenarios, 1):
-                    new_description_text += f"{i}. {scenario}\n"
-                new_description_adf = text_to_adf(new_description_text)
+                # Plain text description
+                new_description_text = current_description + scenarios_text
             else:
-                # ADF description - append scenarios as new content
-                new_description_adf = current_description.copy()
-                if 'content' not in new_description_adf:
-                    new_description_adf['content'] = []
-                
-                # Add separator
-                new_description_adf['content'].append({
-                    "type": "rule"
-                })
-                
-                # Add heading
-                new_description_adf['content'].append({
-                    "type": "heading",
-                    "attrs": {"level": 3},
-                    "content": [{
-                        "type": "text",
-                        "text": "Generated Test Scenarios"
-                    }]
-                })
-                
-                # Add scenarios as numbered list
-                list_items = []
-                for scenario in test_scenarios:
-                    list_items.append({
-                        "type": "listItem",
-                        "content": [{
-                            "type": "paragraph",
-                            "content": [{
-                                "type": "text",
-                                "text": scenario
-                            }]
-                        }]
-                    })
-                
-                new_description_adf['content'].append({
-                    "type": "orderedList",
-                    "content": list_items
-                })
+                # ADF description - convert to text first, then append
+                current_text = adf_to_text(current_description)
+                new_description_text = current_text + scenarios_text
         else:
-            # No existing description - create new one with just scenarios
-            scenarios_text = "Generated Test Scenarios\n\n"
-            for i, scenario in enumerate(test_scenarios, 1):
-                scenarios_text += f"{i}. {scenario}\n"
-            new_description_adf = text_to_adf(scenarios_text)
+            # No existing description
+            new_description_text = scenarios_text.strip()
+        
+        # Convert to ADF format
+        new_description_adf = text_to_adf(new_description_text)
         
         # Try MCP first if available, then fallback to direct API
         success = False
@@ -908,18 +887,15 @@ def update_ticket_with_scenarios():
             success, error_message = update_jira_issue_description(issue_key, new_description_adf)
         
         if success:
-            # Update the session with new description info
-            if isinstance(current_description, str):
-                selected['description'] = current_description + "\n\n--- Generated Test Scenarios ---\n\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(test_scenarios, 1))
-            else:
-                selected['description'] = adf_to_text(new_description_adf)
-            selected['description_html'] = None  # Clear cached HTML to force refresh
+            # Update the session with new description
+            selected['description'] = new_description_text
+            selected['description_html'] = None  # Clear cached HTML
             session['selected_ticket'] = selected
             
             logger.info(f"Successfully updated issue {issue_key} with test scenarios")
             return jsonify({
                 'success': True, 
-                'message': f'Successfully updated {issue_key} with {len(test_scenarios)} test scenarios.'
+                'message': f'Successfully updated {issue_key} with test scenarios.'
             }), 200
         else:
             return jsonify({
