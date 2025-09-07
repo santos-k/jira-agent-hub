@@ -154,7 +154,13 @@ class AiChat {
     }
 
     async checkKeyAndOpen() {
+        const button = this.openButton;
+        
         try {
+            // Add loading state to button
+            button.classList.add('loading');
+            button.disabled = true;
+            
             // Add a small delay to ensure any logout operations have completed
             await new Promise(resolve => setTimeout(resolve, 100));
             
@@ -189,6 +195,10 @@ class AiChat {
         } catch (e) {
             console.error('Error checking API key', e);
             alert('Unable to check AI key');
+        } finally {
+            // Remove loading state
+            button.classList.remove('loading');
+            button.disabled = false;
         }
     }
 

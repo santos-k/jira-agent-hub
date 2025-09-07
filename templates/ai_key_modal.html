@@ -9,9 +9,21 @@
         </div>
         <div class="modal-body">
           <p class="small text-muted">To use the AI Chat feature, please provide your Google GenAI API key. The key is stored in your session only (not persisted to disk).</p>
+          
+          <div class="alert alert-info d-flex align-items-center mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            <div>
+              <strong>Need an API key?</strong> Get your free Google GenAI API key from 
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-decoration-none">
+                <i class="bi bi-box-arrow-up-right me-1"></i>
+                Google AI Studio
+              </a>
+            </div>
+          </div>
+          
           <div class="mb-3">
             <label for="aiKeyInput" class="form-label">API Key</label>
-            <input type="password" class="form-control" id="aiKeyInput" name="api_key" placeholder="sk-..." required>
+            <input type="password" class="form-control" id="aiKeyInput" name="api_key" placeholder="AIza..." required>
           </div>
           <div class="form-text">If you skip this step the AI will not be available.</div>
         </div>

@@ -33,14 +33,19 @@
           </ul>
 
           <div class="d-flex align-items-center gap-2">
-            <!-- Theme toggle button -->
-            <button id="themeToggleBtn" class="btn btn-outline-secondary" title="Toggle theme">
-              <span id="themeIcon" class="bi bi-moon"></span>
+            <!-- Modern Theme toggle button -->
+            <button id="themeToggleBtn" class="btn btn-theme-toggle" title="Toggle theme">
+              <div class="theme-icon-container">
+                <span id="themeIcon" class="bi bi-moon theme-icon"></span>
+                <div class="theme-switch-bg"></div>
+              </div>
+              <span class="d-none d-lg-inline ms-2 theme-label">Theme</span>
             </button>
-            <!-- AI Chat button -->
-            <button id="openAiChatBtn" class="btn btn-outline-primary" title="Open AI Chat">
-              <i class="bi bi-chat-dots"></i> 
-              <span class="d-none d-md-inline ms-1">AI Chat</span>
+            <!-- AI Chat button - Modern redesign -->
+            <button id="openAiChatBtn" class="btn btn-ai-chat" title="Open AI Assistant">
+              <i class="bi bi-robot"></i> 
+              <span class="d-none d-md-inline ms-2">AI Assistant</span>
+              <div class="ai-pulse"></div>
             </button>
             {% if session.get('jira_connected') %}
             <div class="dropdown">
