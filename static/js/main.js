@@ -222,16 +222,13 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="collapse show" id="testScenariosContent">
           <div class="card-body">
             <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-primary action-btn regenerateBtn" title="Regenerate scenarios">
-                <i class="bi bi-arrow-clockwise"></i>
-                <span class="d-none d-md-inline ms-1">Regenerate</span>
-              </button>
               <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
                 <i class="bi bi-clipboard"></i>
                 <span class="d-none d-md-inline ms-1">Copy All</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-info action-btn manual-prompt-icon" id="manualPromptBtn" title="Execute manual prompt">
+              <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
                 <i class="bi bi-chat-square-text"></i>
+                <span class="d-none d-md-inline ms-1">Execute Manual</span>
               </button>
             </div>
             <ol id="testScenariosList">`;
@@ -259,7 +256,6 @@ document.addEventListener('DOMContentLoaded', function () {
     attachCollapseHandlers();
     attachDeselectHandler();
     attachGenerateScenariosHandler();
-    attachManualPromptHandlers();
   }
 
   // Function to handle collapse icon rotation
@@ -389,23 +385,6 @@ document.addEventListener('DOMContentLoaded', function () {
           if (originalIcon) originalIcon.className = 'bi bi-magic';
           if (originalText) originalText.textContent = 'Generate Test Scenarios';
           
-          // Also reset ALL regenerate buttons if they exist
-          console.log('Resetting all regenerate buttons after successful generation');
-          const regenerateBtns = document.querySelectorAll('.regenerateBtn');
-          regenerateBtns.forEach(regenerateBtn => {
-            const regenIcon = regenerateBtn.querySelector('i');
-            const regenText = regenerateBtn.querySelector('span');
-            if (regenIcon) {
-              console.log('Resetting regenerate icon to normal state');
-              regenIcon.className = 'bi bi-arrow-clockwise';
-            }
-            if (regenText) regenText.textContent = 'Regenerate';
-            regenerateBtn.disabled = false;
-          });
-          
-          // Clear the trigger data attribute
-          btn.removeAttribute('data-triggered-by');
-          
           const data = await res.json().catch(() => ({}));
 
           if (!res.ok || !data.scenarios) {
@@ -427,16 +406,13 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="collapse show" id="testScenariosContent">
               <div class="card-body">
                 <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                  <button class="btn btn-sm btn-outline-primary action-btn regenerateBtn" title="Regenerate scenarios">
-                    <i class="bi bi-arrow-clockwise"></i>
-                    <span class="d-none d-md-inline ms-1">Regenerate</span>
-                  </button>
                   <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
                     <i class="bi bi-clipboard"></i>
                     <span class="d-none d-md-inline ms-1">Copy All</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-info action-btn manual-prompt-icon" id="manualPromptBtn" title="Execute manual prompt">
+                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
                     <i class="bi bi-chat-square-text"></i>
+                    <span class="d-none d-md-inline ms-1">Execute Manual</span>
                   </button>
                 </div>
                 <ol id="testScenariosList">`;
@@ -467,30 +443,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Attach collapse handlers for the new test scenarios section
           attachCollapseHandlers();
-          // Re-attach manual prompt handlers after adding new button
-          attachManualPromptHandlers();
         })
         .catch(err => {
           btn.disabled = false;
           if (originalIcon) originalIcon.className = 'bi bi-magic';
           if (originalText) originalText.textContent = 'Generate Test Scenarios';
-          
-          // Also reset ALL regenerate buttons if they exist
-          console.log('Resetting all regenerate buttons after error');
-          const regenerateBtns = document.querySelectorAll('.regenerateBtn');
-          regenerateBtns.forEach(regenerateBtn => {
-            const regenIcon = regenerateBtn.querySelector('i');
-            const regenText = regenerateBtn.querySelector('span');
-            if (regenIcon) {
-              console.log('Resetting regenerate icon after error');
-              regenIcon.className = 'bi bi-arrow-clockwise';
-            }
-            if (regenText) regenText.textContent = 'Regenerate';
-            regenerateBtn.disabled = false;
-          });
-          
-          // Clear the trigger data attribute
-          btn.removeAttribute('data-triggered-by');
           
           selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">Network error: ${err.message}</div>`);
         });
@@ -722,46 +679,39 @@ document.addEventListener('DOMContentLoaded', function () {
           console.error('Failed to copy: ', err);
         });
       }
-    } else if (e.target.classList.contains('regenerateBtn') || e.target.closest('.regenerateBtn')) {
-      const button = e.target.classList.contains('regenerateBtn') ? e.target : e.target.closest('.regenerateBtn');
-      const generateBtn = document.getElementById('generateScenariosBtn');
+    } else if (e.target.classList.contains('manual-prompt-btn') || e.target.closest('.manual-prompt-btn')) {
+      const button = e.target.classList.contains('manual-prompt-btn') ? e.target : e.target.closest('.manual-prompt-btn');
+      const scenariosList = document.getElementById('testScenariosList');
       
-      console.log('Regenerate button clicked:', button, 'Generate button:', generateBtn);
-      
-      if (generateBtn && !generateBtn.disabled && !button.disabled) {
-        console.log('Starting regeneration process...');
-        // Add loading state to regenerate button
-        const originalIcon = button.querySelector('i');
-        const originalText = button.querySelector('span');
+      if (scenariosList) {
+        // Get all list items but skip the first one if it contains the controls div
+        const items = Array.from(scenariosList.querySelectorAll('li')).filter(item => {
+          // Skip items that contain buttons (these are control elements, not scenarios)
+          return !item.querySelector('button');
+        });
         
-        if (originalIcon) {
-          console.log('Setting spinner on regenerate icon');
-          originalIcon.className = 'bi bi-arrow-clockwise spinner';
-        }
-        if (originalText) originalText.textContent = 'Generating...';
-        button.disabled = true;
+        let allText = '';
+        items.forEach((item, index) => {
+          allText += (index + 1) + '. ' + item.textContent + '\n';
+        });
         
-        // Also update main generate button
-        const mainIcon = generateBtn.querySelector('i');
-        const mainText = generateBtn.querySelector('span');
-        if (mainIcon) mainIcon.className = 'bi bi-magic spinner';
-        if (mainText) mainText.textContent = 'Generating...';
-        generateBtn.disabled = true;
-        
-        // Store reference to the clicked regenerate button for proper reset
-        generateBtn.setAttribute('data-triggered-by', 'regenerate');
-        
-        // Trigger the main generate button
-        console.log('Triggering main generate button click');
-        generateBtn.click();
-        
-        // Note: The loading state will be reset in the generate scenarios handler
-      } else {
-        console.log('Regenerate blocked - Generate button disabled or missing:', !!generateBtn, generateBtn?.disabled, button.disabled);
+        navigator.clipboard.writeText(allText).then(() => {
+          const originalIcon = button.querySelector('i');
+          const originalText = button.querySelector('span');
+          
+          // Change to checkmark
+          if (originalIcon) originalIcon.className = 'bi bi-check-circle';
+          if (originalText) originalText.textContent = 'Copied';
+          
+          // Reset after 2 seconds
+          setTimeout(() => {
+            if (originalIcon) originalIcon.className = 'bi bi-chat-square-text';
+            if (originalText) originalText.textContent = 'Execute Manual';
+          }, 2000);
+        }).catch(err => {
+          console.error('Failed to copy: ', err);
+        });
       }
-    } else if (e.target.classList.contains('manual-prompt-icon') || e.target.closest('.manual-prompt-icon')) {
-      const button = e.target.classList.contains('manual-prompt-icon') ? e.target : e.target.closest('.manual-prompt-icon');
-      toggleInlineChat(button);
     } else if (e.target.classList.contains('editScenarioBtn')) {
       const li = e.target.parentElement;
       const oldText = li.firstChild.textContent;
@@ -931,7 +881,6 @@ document.addEventListener('DOMContentLoaded', function () {
   attachSelectionHandlers();
   attachGenerateScenariosHandler();
   attachCollapseHandlers();
-  attachManualPromptHandlers();
   attachTableSortHandlers();
   autoDismissAlerts();
   checkTableScrolling(); // Check if table needs scrolling on page load
