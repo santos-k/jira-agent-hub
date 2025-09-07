@@ -3,15 +3,32 @@
 {% block content %}
 <div class="card">
   <div class="card-body">
-    <h5 class="card-title">Search Jira Tickets</h5>
-    <form method="post" action="/search" id="searchForm" class="row g-2">
-      <div class="col-md-9">
-        <input type="text" name="query" id="queryInput" class="form-control" placeholder="Enter Jira ID (KEY-123), multiple IDs (KEY-1, KEY-2) or a JQL query" value="{{ session.get('last_query', '') }}">
+    <h5 class="card-title">
+      <i class="bi bi-search"></i>
+      Search Jira Tickets
+    </h5>
+    <form method="post" action="/search" id="searchForm" class="row g-3">
+      <div class="col-md-8">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-ticket-detailed"></i>
+          </span>
+          <input type="text" name="query" id="queryInput" class="form-control" placeholder="Enter Jira ID (KEY-123), multiple IDs (KEY-1, KEY-2) or a JQL query" value="{{ session.get('last_query', '') }}">
+        </div>
       </div>
-      <div class="col-md-3 d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Search</button>
-        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('clearForm').submit();">Clear Results</button>
-        <button type="button" class="btn btn-outline-info" id="refreshBtn">Refresh</button>
+      <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary action-btn flex-fill">
+          <i class="bi bi-search"></i>
+          <span class="btn-text d-none d-lg-inline ms-1">Search</span>
+        </button>
+        <button type="button" class="btn btn-outline-secondary action-btn" onclick="document.getElementById('clearForm').submit();" title="Clear Results">
+          <i class="bi bi-x-circle"></i>
+          <span class="btn-text d-none d-xl-inline ms-1">Clear</span>
+        </button>
+        <button type="button" class="btn btn-outline-info action-btn" id="refreshBtn" title="Refresh">
+          <i class="bi bi-arrow-clockwise"></i>
+          <span class="btn-text d-none d-xl-inline ms-1">Refresh</span>
+        </button>
       </div>
     </form>
     <form id="clearForm" method="post" action="/clear"></form>
@@ -22,16 +39,20 @@
   {% if search_results %}
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title">Search Results</h5>
+        <h5 class="card-title">
+          <i class="bi bi-table"></i>
+          Search Results
+          <span class="badge bg-primary ms-2">{{ search_results|length }}</span>
+        </h5>
         <div class="table-responsive scrollable-5">
-          <table class="table table-striped" id="resultsTable">
+          <table class="table table-hover" id="resultsTable">
             <thead>
               <tr>
-                <th scope="col">Select</th>
+                <th scope="col" style="width: 60px;">Select</th>
                 <th scope="col" class="sortable" data-column="key">Ticket ID <span class="sort-icon"></span></th>
                 <th scope="col" class="sortable" data-column="summary">Summary <span class="sort-icon"></span></th>
-                <th scope="col" class="sortable" data-column="assignee">Assignee <span class="sort-icon"></span></th>
-                <th scope="col" class="sortable" data-column="status">Status <span class="sort-icon"></span></th>
+                <th scope="col" class="sortable d-none d-md-table-cell" data-column="assignee">Assignee <span class="sort-icon"></span></th>
+                <th scope="col" class="sortable d-none d-lg-table-cell" data-column="status">Status <span class="sort-icon"></span></th>
               </tr>
             </thead>
             <tbody>
@@ -39,14 +60,18 @@
               {% for r in search_results %}
               <tr data-key="{{ r.key }}">
                 <td>
-                  <input type="radio" name="selected_ticket" value="{{ r.key }}" data-url="{{ r.url }}" data-summary="{{ r.summary|e }}" {% if selected and selected.key == r.key %}checked{% endif %}>
+                  <input type="radio" name="selected_ticket" value="{{ r.key }}" data-url="{{ r.url }}" data-summary="{{ r.summary|e }}" {% if selected and selected.key == r.key %}checked{% endif %} class="form-check-input">
                 </td>
                 <td>
-                  <a href="{{ r.url }}" target="_blank">{{ r.key }}</a>
+                  <a href="{{ r.url }}" target="_blank" class="fw-semibold">{{ r.key }}</a>
                 </td>
                 <td>{{ r.summary }}</td>
-                <td>{{ r.assignee }}</td>
-                <td>{{ r.status }}</td>
+                <td class="d-none d-md-table-cell">
+                  <span class="badge bg-secondary">{{ r.assignee }}</span>
+                </td>
+                <td class="d-none d-lg-table-cell">
+                  <span class="badge bg-{% if r.status in ['Done', 'Closed'] %}success{% elif r.status in ['In Progress'] %}warning{% else %}info{% endif %}">{{ r.status }}</span>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -62,13 +87,13 @@
                   Selected: <a href="{{ selected.url }}" target="_blank">{{ selected.key }}</a> — {{ selected.summary }}
                 </button>
                 <div class="d-flex gap-2 flex-wrap">
-                  <button type="button" class="btn btn-sm btn-outline-danger" id="deselectBtn" title="Deselect ticket">
+                  <button type="button" class="btn btn-sm btn-outline-danger action-btn" id="deselectBtn" title="Deselect ticket">
                     <i class="bi bi-x-circle"></i>
-                    <span class="d-none d-md-inline ms-1">Deselect</span>
+                    <span class="btn-text d-none d-md-inline ms-1">Deselect</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-primary" id="generateScenariosBtn" title="Generate test scenarios">
+                  <button type="button" class="btn btn-sm btn-primary action-btn" id="generateScenariosBtn" title="Generate test scenarios">
                     <i class="bi bi-magic"></i>
-                    <span class="d-none d-md-inline ms-1">Generate Test Scenarios</span>
+                    <span class="btn-text d-none d-md-inline ms-1">Generate Test Scenarios</span>
                   </button>
                 </div>
               </div>
@@ -108,15 +133,15 @@
                           <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
                               <i class="bi bi-clipboard"></i>
-                              <span class="d-none d-md-inline ms-1">Copy All</span>
+                              <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
                               <i class="bi bi-chat-square-text"></i>
-                              <span class="d-none d-md-inline ms-1">Execute Manual</span>
+                              <span class="btn-text d-none d-md-inline ms-1">Execute Manual</span>
                             </button>
                             <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
                               <i class="bi bi-upload"></i>
-                              <span class="d-none d-md-inline ms-1">Update Ticket</span>
+                              <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
                             </button>
                           </div>
                           <ol id="testScenariosList">

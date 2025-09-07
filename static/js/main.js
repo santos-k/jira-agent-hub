@@ -184,11 +184,11 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-sm btn-outline-danger action-btn" id="deselectBtn" title="Deselect ticket">
             <i class="bi bi-x-circle"></i>
-            <span class="d-none d-md-inline ms-1">Deselect</span>
+            <span class="btn-text d-none d-md-inline ms-1">Deselect</span>
           </button>
           <button type="button" class="btn btn-sm btn-primary action-btn" id="generateScenariosBtn" title="Generate test scenarios">
             <i class="bi bi-magic"></i>
-            <span class="d-none d-md-inline ms-1">${selected.test_scenarios && selected.test_scenarios.length > 0 ? 'Regenerate Test Scenarios' : 'Generate Test Scenarios'}</span>
+            <span class="btn-text d-none d-md-inline ms-1">${selected.test_scenarios && selected.test_scenarios.length > 0 ? 'Regenerate Test Scenarios' : 'Generate Test Scenarios'}</span>
           </button>
         </div>
       </div>
@@ -224,15 +224,15 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
               <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
                 <i class="bi bi-clipboard"></i>
-                <span class="d-none d-md-inline ms-1">Copy All</span>
+                <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
               </button>
               <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
                 <i class="bi bi-chat-square-text"></i>
-                <span class="d-none d-md-inline ms-1">Execute Manual</span>
+                <span class="btn-text d-none d-md-inline ms-1">Execute Manual</span>
               </button>
               <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
                 <i class="bi bi-upload"></i>
-                <span class="d-none d-md-inline ms-1">Update Ticket</span>
+                <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
               </button>
             </div>
             <ol id="testScenariosList">`;
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         btn.disabled = true;
         const originalIcon = btn.querySelector('i');
-        const originalText = btn.querySelector('span');
+        const originalText = btn.querySelector('.btn-text');
         const hasExistingScenarios = selInfo.querySelector('#testScenariosContent');
         
         // Keep icon static, only change text
@@ -529,10 +529,50 @@ document.addEventListener('DOMContentLoaded', function () {
     // Populate modal with ticket and scenario information
     populateUpdateModal(ticketKey, ticketSummary, scenarios);
     
-    // Show the confirmation modal
-    const modal = new bootstrap.Modal(document.getElementById('updateTicketModal'));
-    modal.show();
+    // Show the modern modal
+    showModernModal();
   }
+
+  // Modern modal functions
+  function showModernModal() {
+    const modal = document.getElementById('updateTicketModal');
+    if (modal) {
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      
+      // Close on backdrop click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          hideModernModal();
+        }
+      });
+      
+      // Close on escape key
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+  }
+  
+  function hideModernModal() {
+    const modal = document.getElementById('updateTicketModal');
+    if (modal) {
+      modal.classList.remove('show');
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', handleEscapeKey);
+    }
+  }
+  
+  function handleEscapeKey(e) {
+    if (e.key === 'Escape') {
+      hideModernModal();
+    }
+  }
+  
+  // Attach close button handlers
+  document.addEventListener('click', function(e) {
+    if (e.target.matches('[data-bs-dismiss="modal"]') || e.target.closest('[data-bs-dismiss="modal"]')) {
+      hideModernModal();
+    }
+  });
 
   function populateUpdateModal(ticketKey, ticketSummary, scenarios) {
     // Update modal content
@@ -566,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Disable button and show loading state
     confirmButton.disabled = true;
-    if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split';
+    if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split spinner';
     if (buttonText) buttonText.textContent = 'Updating...';
     
     // Send update request to backend
@@ -587,8 +627,7 @@ document.addEventListener('DOMContentLoaded', function () {
       
       if (response.ok && data.success) {
         // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('updateTicketModal'));
-        if (modal) modal.hide();
+        hideModernModal();
         
         // Show success message using existing alert system
         showAlert(data.message || 'Ticket updated successfully with test scenarios!', 'success');
@@ -865,7 +904,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         navigator.clipboard.writeText(allText).then(() => {
           const originalIcon = button.querySelector('i');
-          const originalText = button.querySelector('span');
+          const originalText = button.querySelector('.btn-text');
           
           // Change to checkmark
           originalIcon.className = 'bi bi-check-circle';

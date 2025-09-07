@@ -11,7 +11,7 @@
     <link href="/static/css/style.css" rel="stylesheet">
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg">
       <div class="container-fluid">
         <a class="navbar-brand" href="/">Jira Agent Hub</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
@@ -20,17 +20,23 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-              <a class="nav-link active" aria-current="page" href="/">Search</a>
+              <a class="nav-link active" aria-current="page" href="/">
+                <i class="bi bi-search"></i>
+                <span class="d-none d-md-inline ms-1">Search</span>
+              </a>
             </li>
           </ul>
 
-          <div class="d-flex align-items-center">
+          <div class="d-flex align-items-center gap-2">
             <!-- Theme toggle button -->
-            <button id="themeToggleBtn" class="btn btn-outline-secondary me-2" title="Toggle theme">
+            <button id="themeToggleBtn" class="btn btn-outline-secondary" title="Toggle theme">
               <span id="themeIcon" class="bi bi-moon"></span>
             </button>
             <!-- AI Chat button -->
-            <button id="openAiChatBtn" class="btn btn-outline-primary btn-sm me-2" title="Open AI Chat"><i class="bi bi-chat-dots"></i> AI Chat</button>
+            <button id="openAiChatBtn" class="btn btn-outline-primary" title="Open AI Chat">
+              <i class="bi bi-chat-dots"></i> 
+              <span class="d-none d-md-inline ms-1">AI Chat</span>
+            </button>
             {% if session.get('jira_connected') %}
             <div class="dropdown">
               <button class="btn btn-secondary rounded-circle user-avatar" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">{{ session.get('user_initials') }}</button>
@@ -40,24 +46,30 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <form id="logoutForm" method="post" action="/logout">
-                    <button type="submit" class="dropdown-item">Logout</button>
+                    <button type="submit" class="dropdown-item">
+                      <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </button>
                   </form>
                 </li>
               </ul>
             </div>
             {% else %}
-            <button class="btn btn-primary" id="connectBtn" data-bs-toggle="modal" data-bs-target="#loginModal">Connect to Jira</button>
+            <button class="btn btn-primary" id="connectBtn" data-bs-toggle="modal" data-bs-target="#loginModal">
+              <i class="bi bi-link-45deg"></i>
+              <span class="d-none d-md-inline ms-1">Connect to Jira</span>
+            </button>
             {% endif %}
           </div>
         </div>
       </div>
     </nav>
 
-    <div class="container my-4">
+    <div class="container-fluid my-4">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, msg in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% elif category == 'warning' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
               {{ msg }}
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
