@@ -92,49 +92,95 @@ class AiChat {
         // AI Logout functionality
         const aiLogoutBtn = document.getElementById('aiLogoutBtn');
         if (aiLogoutBtn) {
-            aiLogoutBtn.addEventListener('click', () => {
-                // Clear AI session
-                fetch('/api/ai/clear_session', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
+            aiLogoutBtn.addEventListener('click', async () => {
+                try {
+                    // Disable the button to prevent double-clicks
+                    aiLogoutBtn.disabled = true;
+                    
+                    // Clear both API key and session data sequentially for better reliability
+                    const clearKeyResponse = await fetch('/api/ai/clear_key', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    const clearSessionResponse = await fetch('/api/ai/clear_session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    const keyResult = await clearKeyResponse.json().catch(() => ({ success: false }));
+                    const sessionResult = await clearSessionResponse.json().catch(() => ({ success: false }));
+                    
+                    if (keyResult.success && sessionResult.success) {
                         // Clear chat messages
                         this.messageContainer.innerHTML = '';
                         this.messages = [];
                         
-                        // Add welcome message
-                        this.addMessage('AI session cleared successfully. You can start a new conversation.', 'ai');
+                        // Clear the API key input field in the modal
+                        const keyInput = document.getElementById('aiKeyInput');
+                        if (keyInput) {
+                            keyInput.value = '';
+                        }
                         
-                        // Show brief status message
-                        this.showAiStatus('Session cleared', 'success');
+                        // Clear any status messages
+                        this.clearAiStatus();
                         
-                        this.sendUIEvent({ category: 'ai_chat', event: 'session_cleared' });
+                        // Close the sidebar
+                        this.closeSidebar();
+                        
+                        // Log successful logout
+                        this.sendUIEvent({ category: 'ai_chat', event: 'logout_success' });
+                        
+                        // Show a brief visual feedback
+                        this.showTemporaryMessage('AI session ended successfully');
                     } else {
-                        this.showAiStatus('Failed to clear session', 'danger');
+                        this.showAiStatus('Failed to clear AI session', 'danger');
                     }
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('Error clearing AI session:', error);
-                    this.showAiStatus('Error clearing session', 'danger');
-                });
+                    this.showAiStatus('Error ending AI session', 'danger');
+                } finally {
+                    // Re-enable the button
+                    aiLogoutBtn.disabled = false;
+                }
             });
         }
     }
 
     async checkKeyAndOpen() {
         try {
-            const res = await fetch('/api/ai/has_key');
+            // Add a small delay to ensure any logout operations have completed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const res = await fetch('/api/ai/has_key', {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
             const data = await res.json().catch(() => ({}));
+            
             if (!res.ok || !data.has_key) {
                 // show API key modal
                 this.sendUIEvent({ category: 'ai_chat', event: 'api_key_missing' });
                 const modalEl = document.getElementById('aiKeyModal');
+                if (!modalEl) {
+                    console.error('aiKeyModal element not found!');
+                    alert('AI Key modal not available');
+                    return;
+                }
+                
+                // Ensure the input field is empty for a fresh start
+                const keyInput = document.getElementById('aiKeyInput');
+                if (keyInput) {
+                    keyInput.value = '';
+                    keyInput.focus();
+                }
+                
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
                 return;
@@ -402,6 +448,24 @@ class AiChat {
         status.style.display = 'none';
         status.innerHTML = '';
     }
+    
+    showTemporaryMessage(message, duration = 2000) {
+        // Create a temporary status message that disappears after a short time
+        const status = document.getElementById('aiStatus');
+        if (!status) return;
+        
+        status.style.display = 'block';
+        status.className = 'ai-status';
+        status.textContent = message;
+        status.style.background = '#d1ecf1';
+        status.style.color = '#0c5460';
+        
+        // Auto-hide after duration
+        setTimeout(() => {
+            status.style.display = 'none';
+            status.innerHTML = '';
+        }, duration);
+    }
 
     _getRenderMode() {
         try { return (this.renderModeElem && this.renderModeElem.value) ? this.renderModeElem.value : 'markdown'; }
@@ -470,4 +534,16 @@ class AiChat {
 // Initialize AI Chat when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.aiChat = new AiChat();
+    
+    // Simple test function to verify logout functionality
+    window.testAiLogout = function() {
+        console.log('Testing AI logout functionality...');
+        const logoutBtn = document.getElementById('aiLogoutBtn');
+        if (logoutBtn) {
+            console.log('AI logout button found, triggering click...');
+            logoutBtn.click();
+        } else {
+            console.error('AI logout button not found!');
+        }
+    };
 });
