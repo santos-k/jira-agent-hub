@@ -600,8 +600,10 @@ def manual_prompt_scenarios():
             logger.error('Manual prompt error: No selected ticket in session')
             return jsonify({'error': 'No selected ticket. Please select a ticket first.'}), 400
         if not api_key:
-            logger.error('Manual prompt error: No AI API key in session')
-            return jsonify({'error': 'AI API key missing.'}), 403
+            # Check if MCP is enabled and can be used as fallback
+            if not (HAS_MCP and session.get("mcp_enabled")):
+                logger.error('Manual prompt error: No AI API key in session and MCP not available')
+                return jsonify({'error': 'AI API key missing.'}), 403
         if not description:
             logger.error('Manual prompt error: No description provided')
             return jsonify({'error': 'Description is required.'}), 400
@@ -611,7 +613,13 @@ def manual_prompt_scenarios():
         scenarios, error = generate_scenarios_with_ai(description, prompt)
         if error:
             logger.error(f"Manual prompt failed: {error}")
-            return jsonify({'error': error}), 400
+            # Map specific errors to appropriate HTTP status codes
+            if 'API key' in error.lower() or 'unauthorized' in error.lower():
+                return jsonify({'error': error}), 403
+            elif 'unavailable' in error.lower() or 'service' in error.lower():
+                return jsonify({'error': error}), 503
+            else:
+                return jsonify({'error': error}), 400
         # Update scenario history in session
         history = selected.get('scenario_history', [])
         # Save previous scenarios if present

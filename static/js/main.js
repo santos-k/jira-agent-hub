@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function () {
     chatContainer.innerHTML = `
       <div class="inline-chat-header">
         <span class="fw-bold">Manual Prompt Chat</span>
-        <button type="button" class="btn-close btn-sm" onclick="this.closest('.inline-chat').style.display='none'; document.querySelector('.manual-prompt-icon').style.backgroundColor=''; document.querySelector('.manual-prompt-icon').style.color='';"></button>
+        <button type="button" class="btn-close btn-sm" onclick="this.closest('.inline-chat').style.display='none'; this.closest('.card').querySelector('.manual-prompt-btn').style.backgroundColor=''; this.closest('.card').querySelector('.manual-prompt-btn').style.color='';"></button>
       </div>
       <div class="inline-chat-messages" id="inlineChatMessages">
         <div class="inline-chat-message ai">
@@ -548,107 +548,159 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const prompt = input.value.trim();
     if (!prompt) return;
-    
-    // Add user message
-    const userMsg = document.createElement('div');
-    userMsg.className = 'inline-chat-message user';
-    userMsg.textContent = prompt;
-    messages.appendChild(userMsg);
-    
-    // Clear input
-    input.value = '';
-    input.style.height = 'auto';
-    
-    // Show loading
-    const loadingMsg = document.createElement('div');
-    loadingMsg.className = 'inline-chat-message ai';
-    loadingMsg.innerHTML = '<i class="bi bi-three-dots spinner"></i> Generating scenarios...';
-    messages.appendChild(loadingMsg);
-    
-    // Disable send button
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<i class="bi bi-hourglass spinner"></i>';
-    
-    // Scroll to bottom
-    messages.scrollTop = messages.scrollHeight;
-    
-    // Get description from the selected ticket
-    const selInfo = document.getElementById('selectedInfo');
-    let description = '';
-    const descDiv = selInfo ? selInfo.querySelector('.adf-desc') : null;
-    if (descDiv) {
-      description = descDiv.textContent || descDiv.innerText || '';
-    }
-    
-    // Send to backend
-    fetch('/api/manual_prompt_scenarios', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ description: description, prompt: prompt })
+
+    // First check if AI API key is available
+    fetch('/api/ai/has_key', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
     })
     .then(async res => {
-      // Remove loading message
-      loadingMsg.remove();
-      
-      // Re-enable send button
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = '<i class="bi bi-send"></i>';
-      
       const data = await res.json().catch(() => ({}));
-      
-      if (!res.ok || !data.scenarios) {
+      if (!res.ok || !data.has_key) {
         const errorMsg = document.createElement('div');
         errorMsg.className = 'inline-chat-message ai';
-        errorMsg.innerHTML = `<span class="text-danger">Error: ${data.error || 'Failed to generate scenarios.'}</span>`;
+        errorMsg.innerHTML = '<span class="text-danger">AI API key missing. Please set your API key first.</span>';
         messages.appendChild(errorMsg);
+        messages.scrollTop = messages.scrollHeight;
         return;
       }
+
+      // Add user message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'inline-chat-message user';
+      userMsg.textContent = prompt;
+      messages.appendChild(userMsg);
       
-      // Add AI response
-      const aiMsg = document.createElement('div');
-      aiMsg.className = 'inline-chat-message ai';
-      aiMsg.innerHTML = `<strong>Generated ${data.scenarios.length} scenarios:</strong><br><br>` + 
-        data.scenarios.map((s, i) => `${i + 1}. ${s}`).join('<br>');
-      messages.appendChild(aiMsg);
+      // Clear input
+      input.value = '';
+      input.style.height = 'auto';
       
-      // Update the main scenarios list
-      const testScenariosList = document.getElementById('testScenariosList');
-      if (testScenariosList) {
-        // Clear existing scenarios but keep controls
-        const controlsDiv = testScenariosList.querySelector('.scenario-controls');
-        testScenariosList.innerHTML = '';
-        if (controlsDiv) {
-          testScenariosList.appendChild(controlsDiv);
-        }
-        
-        // Add new scenarios
-        data.scenarios.forEach(s => {
-          const li = document.createElement('li');
-          li.textContent = s;
-          testScenariosList.appendChild(li);
-        });
-      }
+      // Show loading
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'inline-chat-message ai';
+      loadingMsg.innerHTML = '<i class="bi bi-three-dots spinner"></i> Generating scenarios...';
+      messages.appendChild(loadingMsg);
+      
+      // Disable send button
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="bi bi-hourglass spinner"></i>';
       
       // Scroll to bottom
       messages.scrollTop = messages.scrollHeight;
+      
+      // Get description from the selected ticket
+      const selInfo = document.getElementById('selectedInfo');
+      let description = '';
+      const descDiv = selInfo ? selInfo.querySelector('.adf-desc') : null;
+      if (descDiv) {
+        description = descDiv.textContent || descDiv.innerText || '';
+      }
+      
+      if (!description.trim()) {
+        loadingMsg.remove();
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send"></i>';
+        
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'inline-chat-message ai';
+        errorMsg.innerHTML = '<span class="text-danger">No description found for this ticket. Please ensure the ticket has a description.</span>';
+        messages.appendChild(errorMsg);
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      
+      // Send to backend
+      fetch('/api/manual_prompt_scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ description: description, prompt: prompt })
+      })
+      .then(async res => {
+        // Remove loading message
+        loadingMsg.remove();
+        
+        // Re-enable send button
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send"></i>';
+        
+        const data = await res.json().catch(() => ({}));
+        
+        if (!res.ok || !data.scenarios) {
+          let errorMsg = data.error || 'Failed to generate scenarios.';
+          if (res.status === 503) errorMsg = 'AI service is currently unavailable. Please try again later.';
+          if (res.status === 403) errorMsg = 'AI API key missing or invalid. Please check your API key.';
+          if (res.status === 400) errorMsg = data.error || 'Bad request. Please check your input.';
+          
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'inline-chat-message ai';
+          errorDiv.innerHTML = `<span class="text-danger">Error: ${errorMsg}</span>`;
+          messages.appendChild(errorDiv);
+          messages.scrollTop = messages.scrollHeight;
+          return;
+        }
+        
+        // Add AI response
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'inline-chat-message ai';
+        aiMsg.innerHTML = `<strong>Generated ${data.scenarios.length} scenarios:</strong><br><br>` + 
+          data.scenarios.map((s, i) => `${i + 1}. ${s}`).join('<br>');
+        messages.appendChild(aiMsg);
+        
+        // Update the main scenarios list
+        const testScenariosList = document.getElementById('testScenariosList');
+        if (testScenariosList) {
+          // Clear existing scenarios but keep controls
+          const controlsDiv = testScenariosList.querySelector('.scenario-controls');
+          testScenariosList.innerHTML = '';
+          if (controlsDiv) {
+            testScenariosList.appendChild(controlsDiv);
+          }
+          
+          // Add new scenarios
+          data.scenarios.forEach(s => {
+            const li = document.createElement('li');
+            li.textContent = s;
+            testScenariosList.appendChild(li);
+          });
+        }
+        
+        // Update the Generate button text to show "Regenerate Test Scenarios"
+        const generateBtn = document.getElementById('generateScenariosBtn');
+        if (generateBtn) {
+          const btnText = generateBtn.querySelector('span');
+          if (btnText) {
+            btnText.textContent = 'Regenerate Test Scenarios';
+          }
+        }
+        
+        // Scroll to bottom
+        messages.scrollTop = messages.scrollHeight;
+      })
+      .catch(err => {
+        // Remove loading message
+        loadingMsg.remove();
+        
+        // Re-enable send button
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send"></i>';
+        
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'inline-chat-message ai';
+        errorMsg.innerHTML = `<span class="text-danger">Network error: ${err.message}</span>`;
+        messages.appendChild(errorMsg);
+        
+        // Scroll to bottom
+        messages.scrollTop = messages.scrollHeight;
+      });
     })
     .catch(err => {
-      // Remove loading message
-      loadingMsg.remove();
-      
-      // Re-enable send button
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = '<i class="bi bi-send"></i>';
-      
       const errorMsg = document.createElement('div');
       errorMsg.className = 'inline-chat-message ai';
-      errorMsg.innerHTML = `<span class="text-danger">Network error: ${err.message}</span>`;
+      errorMsg.innerHTML = `<span class="text-danger">Error checking API key: ${err.message}</span>`;
       messages.appendChild(errorMsg);
-      
-      // Scroll to bottom
       messages.scrollTop = messages.scrollHeight;
     });
   };
@@ -689,37 +741,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     } else if (e.target.classList.contains('manual-prompt-btn') || e.target.closest('.manual-prompt-btn')) {
       const button = e.target.classList.contains('manual-prompt-btn') ? e.target : e.target.closest('.manual-prompt-btn');
-      const scenariosList = document.getElementById('testScenariosList');
       
-      if (scenariosList) {
-        // Get all list items but skip the first one if it contains the controls div
-        const items = Array.from(scenariosList.querySelectorAll('li')).filter(item => {
-          // Skip items that contain buttons (these are control elements, not scenarios)
-          return !item.querySelector('button');
-        });
-        
-        let allText = '';
-        items.forEach((item, index) => {
-          allText += (index + 1) + '. ' + item.textContent + '\n';
-        });
-        
-        navigator.clipboard.writeText(allText).then(() => {
-          const originalIcon = button.querySelector('i');
-          const originalText = button.querySelector('span');
-          
-          // Change to checkmark
-          if (originalIcon) originalIcon.className = 'bi bi-check-circle';
-          if (originalText) originalText.textContent = 'Copied';
-          
-          // Reset after 2 seconds
-          setTimeout(() => {
-            if (originalIcon) originalIcon.className = 'bi bi-chat-square-text';
-            if (originalText) originalText.textContent = 'Execute Manual';
-          }, 2000);
-        }).catch(err => {
-          console.error('Failed to copy: ', err);
-        });
-      }
+      // Toggle inline chat interface
+      toggleInlineChat(button);
     } else if (e.target.classList.contains('editScenarioBtn')) {
       const li = e.target.parentElement;
       const oldText = li.firstChild.textContent;
