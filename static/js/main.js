@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Make entire row clickable for selection (except links and radio buttons)
-    const tableRows = document.querySelectorAll('#resultsTable tbody tr');
+    const tableRows = document.querySelectorAll('.table-row');
     tableRows.forEach(row => {
       row.addEventListener('click', function(e) {
         // Only proceed if the click wasn't on a link, radio button, or any input element
@@ -185,6 +185,10 @@ document.addEventListener('DOMContentLoaded', function () {
           Selected: <a href="${selected.url}" target="_blank">${selected.key}</a> — ${selected.summary || ''}
         </button>
         <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-info action-btn" id="viewBtn" title="View ticket in new tab">
+            <i class="bi bi-box-arrow-up-right"></i>
+            <span class="btn-text d-none d-md-inline ms-1">View</span>
+          </button>
           <button type="button" class="btn btn-sm btn-outline-danger action-btn" id="deselectBtn" title="Deselect ticket">
             <i class="bi bi-x-circle"></i>
             <span class="btn-text d-none d-md-inline ms-1">Deselect</span>
@@ -261,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     attachCollapseHandlers();
+    attachViewHandler();
     attachDeselectHandler();
     attachGenerateScenariosHandler();
   }
@@ -313,6 +318,23 @@ document.addEventListener('DOMContentLoaded', function () {
       scenarioHistoryContent.addEventListener('hide.bs.collapse', function () {
         scenarioHistoryIcon.className = 'bi bi-chevron-right';
       });
+    }
+  }
+
+  // View button handler
+  function attachViewHandler() {
+    const viewBtn = document.getElementById('viewBtn');
+    if (viewBtn) {
+      viewBtn.onclick = function () {
+        // Get the selected ticket URL from the header link
+        const selectedInfo = document.getElementById('selectedInfo');
+        if (selectedInfo) {
+          const ticketLink = selectedInfo.querySelector('a[href*="/browse/"]');
+          if (ticketLink) {
+            window.open(ticketLink.href, '_blank');
+          }
+        }
+      };
     }
   }
 
@@ -1105,6 +1127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initialize handlers
   attachSelectionHandlers();
+  attachViewHandler();
   attachGenerateScenariosHandler();
   attachUpdateTicketHandler();
   attachUpdateConfirmHandler();

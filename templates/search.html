@@ -85,6 +85,10 @@
                   Selected: <a href="{{ selected.url }}" target="_blank">{{ selected.key }}</a> — {{ selected.summary }}
                 </button>
                 <div class="d-flex gap-2 flex-wrap">
+                  <button type="button" class="btn btn-sm btn-outline-info action-btn" id="viewBtn" title="View ticket in new tab">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">View</span>
+                  </button>
                   <button type="button" class="btn btn-sm btn-outline-danger action-btn" id="deselectBtn" title="Deselect ticket">
                     <i class="bi bi-x-circle"></i>
                     <span class="btn-text d-none d-md-inline ms-1">Deselect</span>
