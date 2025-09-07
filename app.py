@@ -688,7 +688,7 @@ def generate_scenarios_with_ai(description, prompt=None):
             line = line.strip()
             if not line:
                 continue
-            m = re.match(r"^(?:\d+\.|-|•)\s*(.+)$", line)
+            m = re.match(r"^(?:\d+\.|-|•|\*)\s*(.+)$", line)
             if m:
                 scenarios.append(m.group(1).strip())
             else:
