@@ -1,51 +1,5 @@
-try:
-    from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g, Blueprint
-except Exception:
-    # Fallback stubs for environments without Flask (used only to satisfy static analysis/editing tools)
-    class _StubSession(dict):
-        pass
-
-    Flask = object
-    Blueprint = object
-
-    def render_template(*a, **k):
-        return ""
-
-    class _Req:
-        def __init__(self):
-            self.form = {}
-            self.args = {}
-            self.content_length = 0
-        def get_json(self):
-            return {}
-
-    request = _Req()
-
-    def redirect(x):
-        return x
-
-    def url_for(x, **k):
-        return "/"
-
-    session = _StubSession()
-
-    def jsonify(*a, **k):
-        return {}
-
-    def flash(*a, **k):
-        return None
-
-    class _G:
-        pass
-
-    g = _G()
-
-try:
-    from flask_session import Session
-except Exception:
-    class Session:
-        def __init__(self, app=None):
-            pass
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g, Blueprint
+from flask_session import Session
 
 import requests
 import os
@@ -54,24 +8,14 @@ import re
 import time
 import json
 import logger as logutil
-try:
-    from ai.google_ai import GoogleAIChat
-    from ai.mcp_ai import MCPAIChat
-except Exception:
-    # In some static-analysis environments the module may not be importable.
-    # Fall back to a None placeholder so runtime can handle missing AI client.
-    GoogleAIChat = None
-    MCPAIChat = None
+from ai.google_ai import GoogleAIChat
+from ai.mcp_ai import MCPAIChat
 import logging as _logging
 logger = logutil.get_logger(__name__)
 # Import MCP modules
-try:
-    from mcp.api import mcp_bp
-    from mcp.config import mcp_config
-    from mcp.auth import mcp_auth
-    HAS_MCP = True
-except ImportError:
-    HAS_MCP = False
+from mcp.api import mcp_bp
+from mcp.config import mcp_config
+from mcp.auth import mcp_auth
 
 # Configuration
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -84,31 +28,26 @@ Session(app)
 logger = logutil.get_logger(__name__)
 ai_logger = _logging.getLogger('ai_chat')
 
-# Register MCP blueprint if available
-if HAS_MCP:
-    app.register_blueprint(mcp_bp)
-    logger.info("MCP integration enabled")
+# Register MCP blueprint
+app.register_blueprint(mcp_bp)
+logger.info("MCP integration enabled")
 
 # Request/response logging: record start time and log after response
-try:
-    @app.before_request
-    def _start_timer():
-        g._start_time = time.time()
+@app.before_request
+def _start_timer():
+    g._start_time = time.time()
 
-    @app.after_request
-    def _log_request_response(response):
-        try:
-            duration = (time.time() - getattr(g, "_start_time", time.time()))
-            payload_size = request.content_length or 0
-            # response.status may not exist on stub; use getattr
-            status = getattr(response, 'status', getattr(response, 'status_code', ''))
-            logger.info("%s %s %s %sB %.3fs", request.method if hasattr(request, 'method') else 'N/A', request.path if hasattr(request, 'path') else 'N/A', status, payload_size, duration)
-        except Exception:
-            logger.exception("Error logging request/response")
-        return response
-except Exception:
-    # If app is not a real Flask app in the current environment, skip hooks
-    pass
+@app.after_request
+def _log_request_response(response):
+    try:
+        duration = (time.time() - getattr(g, "_start_time", time.time()))
+        payload_size = request.content_length or 0
+        # response.status may not exist on stub; use getattr
+        status = getattr(response, 'status', getattr(response, 'status_code', ''))
+        logger.info("%s %s %s %sB %.3fs", request.method if hasattr(request, 'method') else 'N/A', request.path if hasattr(request, 'path') else 'N/A', status, payload_size, duration)
+    except Exception:
+        logger.exception("Error logging request/response")
+    return response
 
 # Helpers
 @logutil.log_exceptions
@@ -216,9 +155,8 @@ def logout():
     # Clear connection-related session data
     keys = ["jira_connected", "jira_url", "jira_email", "jira_api_token", "user_full_name", "user_email", "user_initials", "search_results", "last_query", "selected_ticket"]
     
-    # Clear MCP session data if MCP is enabled
-    if HAS_MCP:
-        mcp_auth.clear_auth()
+    # Clear MCP session data
+    mcp_auth.clear_auth()
     for k in keys:
         session.pop(k, None)
     logger.info("User logged out and session cleared")
@@ -619,7 +557,7 @@ def manual_prompt_scenarios():
             return jsonify({'error': 'No selected ticket. Please select a ticket first.'}), 400
         if not api_key:
             # Check if MCP is enabled and can be used as fallback
-            if not (HAS_MCP and session.get("mcp_enabled")):
+            if not session.get("mcp_enabled"):
                 logger.error('Manual prompt error: No AI API key in session and MCP not available')
                 return jsonify({'error': 'AI API key missing.'}), 403
         if not description:
@@ -866,7 +804,7 @@ def update_ticket_with_scenarios():
         error_message = None
         
         # Try MCP update if available
-        if HAS_MCP and session.get("mcp_enabled"):
+        if session.get("mcp_enabled"):
             try:
                 from mcp.client import MCPClient
                 client = MCPClient()
@@ -930,12 +868,8 @@ def generate_scenarios_with_ai(description, prompt=None):
         )
     
     # Check if MCP is enabled and connected
-    if HAS_MCP and session.get("mcp_enabled"):
+    if session.get("mcp_enabled"):
         # Use MCP AI for test scenario generation
-        if not MCPAIChat:
-            logger.error('MCP AI service unavailable for scenario generation')
-            return None, 'MCP AI service unavailable.'
-            
         chat = MCPAIChat()
         try:
             resp = chat.send_message(full_prompt)
@@ -949,10 +883,6 @@ def generate_scenarios_with_ai(description, prompt=None):
         if not api_key:
             logger.error('AI API key missing for scenario generation')
             return None, 'AI API key missing.'
-        if not GoogleAIChat:
-            logger.error('AI service unavailable for scenario generation')
-            return None, 'AI service unavailable.'
-            
         chat = GoogleAIChat(api_key)
         try:
             resp = chat.send_message(full_prompt)

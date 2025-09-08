@@ -1,15 +1,5 @@
 import logging
-import importlib
 from typing import Optional
-
-# Configure ai_chat logger if logging_setup is available
-try:
-    logging_setup = importlib.import_module('logging_setup')
-    if hasattr(logging_setup, 'setup_ai_logging'):
-        logging_setup.setup_ai_logging()
-except Exception:
-    # ignore if logging_setup cannot be imported in certain environments
-    pass
 
 logger = logging.getLogger('ai_chat')
 
