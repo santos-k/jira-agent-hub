@@ -1,6 +1,4 @@
 Flask>=2.0
 requests>=2.25
-jira>=3.0
 Flask-Session>=0.4
-bootstrap-flask>=1.7
 google-genai>=0.20.0
