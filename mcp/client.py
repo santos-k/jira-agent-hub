@@ -2,7 +2,7 @@ import os
 import requests
 import json
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from requests.auth import HTTPBasicAuth
 from logger import get_logger, log_exceptions
 

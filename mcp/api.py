@@ -1,6 +1,6 @@
 import json
 import requests
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 from flask import session, request, jsonify, Blueprint
 from logger import get_logger, log_exceptions
 from mcp.client import MCPClient

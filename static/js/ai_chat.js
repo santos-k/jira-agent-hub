@@ -544,16 +544,4 @@ class AiChat {
 // Initialize AI Chat when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.aiChat = new AiChat();
-    
-    // Simple test function to verify logout functionality
-    window.testAiLogout = function() {
-        console.log('Testing AI logout functionality...');
-        const logoutBtn = document.getElementById('aiLogoutBtn');
-        if (logoutBtn) {
-            console.log('AI logout button found, triggering click...');
-            logoutBtn.click();
-        } else {
-            console.error('AI logout button not found!');
-        }
-    };
 });

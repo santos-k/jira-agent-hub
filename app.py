@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g, Blueprint
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g
 from flask_session import Session
 
 import requests
@@ -501,18 +501,6 @@ def api_ai_clear_session():
     except Exception:
         ai_logger.exception('Failed to clear AI session')
         return jsonify({'error': 'internal error'}), 500
-
-@app.route('/ai', methods=['GET'])
-def ai_page():
-    # Render a simple page that shows the last AI response and the history from session
-    last = session.get('last_ai_response')
-    history = session.get('ai_history', [])
-    # render a template (created below)
-    try:
-        return render_template('ai_page.html', last=last, history=history)
-    except Exception:
-        # fallback: return simple JSON if templates not available
-        return jsonify({'last': last, 'history': history}), 200
 
 @app.route('/api/generate_test_scenarios', methods=['POST'])
 def generate_test_scenarios():

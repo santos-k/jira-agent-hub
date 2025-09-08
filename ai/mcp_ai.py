@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 from mcp.client import MCPClient
 from mcp.config import mcp_config
 from logger import get_logger, log_exceptions
@@ -117,12 +117,3 @@ class MCPAIChat:
         except Exception as e:
             logger.exception(f"Error extracting response text from MCP AI result: {str(e)}")
             return None
-    
-    def get_history(self) -> List[Dict[str, str]]:
-        """
-        Get the chat history.
-        
-        Returns:
-            The chat history as a list of message dictionaries
-        """
-        return self.history
