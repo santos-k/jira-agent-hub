@@ -1210,21 +1210,24 @@ function convertTimestampsToLocalTime() {
         return;
       }
       
-      // Format to user's local timezone in the required format
+      // Format to user's local timezone with abbreviated month
       const options = {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true, // Use 12-hour format with AM/PM
+        hour12: true,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
       
-      // Get the formatted string
-      const localTimeString = date.toLocaleString('en-US', options);
+      // Get formatted string and adjust format to "Aug 20 2025, 8:10 AM"
+      const formattedString = date.toLocaleString('en-US', options);
       
-      // Update the element with local time (format: "June 23, 2025, 10:15 AM")
+      // Convert from "Aug 20, 2025, 8:10 AM" to "Aug 20 2025, 8:10 AM"
+      const localTimeString = formattedString.replace(/(\w{3} \d{1,2}), (\d{4})/, '$1 $2');
+      
+      // Update the element with local time (format: "Aug 20 2025, 8:10 AM")
       element.textContent = localTimeString;
       element.title = `Original UTC: ${isoTimestamp}`; // Show original UTC time on hover
       
