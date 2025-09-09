@@ -328,10 +328,9 @@ class JiraClient:
             
             # Add custom field for test scenarios (raw value)
             if hasattr(issue.fields, 'customfield_11334'):
-                raw_custom_field = getattr(issue.fields, 'customfield_11334', None)
-                issue_data["fields"]["customfield_11334"] = raw_custom_field
-                if raw_custom_field:
-                    logger.debug(f"Found raw customfield_11334: {type(raw_custom_field)} - {str(raw_custom_field)[:200]}...")
+                test_scenarios_raw = getattr(issue.fields, 'customfield_11334')
+                issue_data["fields"]["customfield_11334"] = test_scenarios_raw
+                logger.debug(f"Found customfield_11334: {str(test_scenarios_raw)[:200]}...")
             
             logger.info(f"Successfully fetched issue: {issue_key}")
             return issue_data
@@ -423,6 +422,60 @@ class JiraClient:
             if not self.jira:
                 return {"error": "JIRA client not initialized"}
             
+            # Special handling for description field with ADF content
+            # Use direct REST API call for ADF content to ensure proper handling
+            if 'description' in fields and isinstance(fields['description'], dict):
+                # Use direct REST API for ADF content
+                import requests
+                from requests.auth import HTTPBasicAuth
+                
+                logger.debug(f"Updating issue {issue_key} with ADF description: {fields['description']}")
+                
+                # Construct the API URL (ensure we use API v3 for ADF support)
+                api_url = f"{self.jira_url}/rest/api/3/issue/{issue_key}"
+                
+                # Prepare the update payload
+                update_payload = {
+                    "fields": fields
+                }
+                
+                logger.debug(f"API URL: {api_url}")
+                logger.debug(f"Update payload: {update_payload}")
+                
+                # Make the API call
+                response = requests.put(
+                    api_url,
+                    auth=HTTPBasicAuth(self.email, self.api_token),
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    json=update_payload,
+                    timeout=30
+                )
+                
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response text: {response.text[:500]}...")
+                
+                if response.status_code == 204:  # No Content - success
+                    logger.info(f"Successfully updated issue {issue_key} via REST API")
+                    return {"success": True}
+                else:
+                    error_msg = f"Failed to update issue {issue_key}: HTTP {response.status_code}"
+                    if response.text:
+                        try:
+                            error_data = response.json()
+                            if 'errors' in error_data:
+                                error_details = ', '.join([f"{k}: {v}" for k, v in error_data['errors'].items()])
+                                error_msg += f" - {error_details}"
+                            elif 'errorMessages' in error_data:
+                                error_msg += f" - {', '.join(error_data['errorMessages'])}"
+                        except:
+                            error_msg += f" - {response.text[:200]}"
+                    
+                    logger.error(error_msg)
+                    return {"error": error_msg}
+            # For custom fields and non-ADF content, use the standard JIRA library method
             issue = self.jira.issue(issue_key)
             issue.update(fields=fields)
             

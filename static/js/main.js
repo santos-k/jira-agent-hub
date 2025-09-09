@@ -601,6 +601,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function showModernModal() {
     const modal = document.getElementById('updateTicketModal');
     if (modal) {
+      // Reset modal state
+      resetUpdateModal();
+      
       modal.classList.add('show');
       document.body.style.overflow = 'hidden';
       
@@ -642,16 +645,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update modal content
     document.getElementById('updateTicketKey').textContent = ticketKey;
     document.getElementById('updateTicketSummary').textContent = ticketSummary;
-    document.getElementById('updateScenariosCount').textContent = scenarios.length;
-    
-    // Populate scenarios list in modal
-    const scenariosList = document.getElementById('updateScenariosList');
-    scenariosList.innerHTML = '';
-    scenarios.forEach(scenario => {
-      const li = document.createElement('li');
-      li.textContent = scenario;
-      scenariosList.appendChild(li);
-    });
   }
 
   function attachUpdateConfirmHandler() {
@@ -663,6 +656,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function resetUpdateModal() {
+    // Hide the preview section
+    const previewSection = document.getElementById('testPlanPreview');
+    if (previewSection) {
+      previewSection.style.display = 'none';
+    }
+    
+    // Reset button state
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    if (confirmButton) {
+      confirmButton.disabled = false;
+      const icon = confirmButton.querySelector('i');
+      const text = confirmButton.querySelector('.update-btn-text');
+      if (icon) icon.className = 'bi bi-upload';
+      if (text) text.textContent = 'Update Test Plan';
+      
+      // Remove any stored data
+      delete confirmButton.dataset.updatedContent;
+    }
+  }
+
   function performTicketUpdate() {
     const confirmButton = document.getElementById('confirmUpdateTicket');
     const buttonText = confirmButton.querySelector('.update-btn-text');
@@ -671,9 +685,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Disable button and show loading state
     confirmButton.disabled = true;
     if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split spinner';
-    if (buttonText) buttonText.textContent = 'Updating...';
+    if (buttonText) buttonText.textContent = 'Loading Preview...';
     
-    // Send update request to backend
+    // Send update request to backend for preview
     fetch('/api/update_ticket_with_scenarios', {
       method: 'POST',
       headers: {
@@ -686,21 +700,15 @@ document.addEventListener('DOMContentLoaded', function () {
       
       // Re-enable button
       confirmButton.disabled = false;
-      if (buttonIcon) buttonIcon.className = 'bi bi-upload';
-      if (buttonText) buttonText.textContent = 'Update Ticket';
+      if (buttonIcon) buttonIcon.className = 'bi bi-check-circle';
+      if (buttonText) buttonText.textContent = 'Confirm Update';
       
-      if (response.ok && data.success) {
-        // Close modal
-        hideModernModal();
-        
-        // Show success message using existing alert system
-        showAlert(data.message || 'Ticket updated successfully with test scenarios!', 'success');
-        
-        // Optionally refresh the selected ticket to show updated description
-        // The session has been updated on the backend, so next refresh will show new content
+      if (response.ok && data.success && data.preview) {
+        // Show preview in the existing modal
+        showTestPlanPreviewInModal(data.current_content, data.updated_content);
       } else {
         // Show error message using existing alert system
-        const errorMsg = data.error || 'Failed to update ticket. Please try again.';
+        const errorMsg = data.error || 'Failed to prepare ticket update. Please try again.';
         showAlert(errorMsg, 'danger');
       }
     })
@@ -711,9 +719,97 @@ document.addEventListener('DOMContentLoaded', function () {
       if (buttonText) buttonText.textContent = 'Update Ticket';
       
       console.error('Update ticket error:', error);
-      showAlert('Network error occurred while updating ticket. Please try again.', 'danger');
+      showAlert('Network error occurred while preparing ticket update. Please try again.', 'danger');
     });
   }
+
+  function showTestPlanPreviewInModal(currentContent, updatedContent) {
+    // Get the preview section elements
+    const previewSection = document.getElementById('testPlanPreview');
+    const currentContentEl = document.getElementById('currentTestPlanContent');
+    const updatedContentEl = document.getElementById('updatedTestPlanContent');
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    
+    if (!previewSection || !currentContentEl || !updatedContentEl) {
+      console.error('Preview elements not found in modal');
+      return;
+    }
+    
+    // Update the content
+    currentContentEl.textContent = currentContent || 'No existing content';
+    updatedContentEl.textContent = updatedContent;
+    
+    // Show the preview section
+    previewSection.style.display = 'block';
+    
+    // Store updated content for confirmation
+    confirmButton.dataset.updatedContent = updatedContent;
+    
+    // Update the confirm handler
+    updateConfirmButtonHandler(updatedContent);
+    
+    // Scroll to preview section
+    previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function updateConfirmButtonHandler(updatedContent) {
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    if (!confirmButton) return;
+    
+    // Remove existing event listeners by cloning the button
+    const newButton = confirmButton.cloneNode(true);
+    confirmButton.parentNode.replaceChild(newButton, confirmButton);
+    
+    // Add new event listener for confirmation
+    newButton.addEventListener('click', function() {
+      if (!updatedContent) {
+        showAlert('No updated content available.', 'danger');
+        return;
+      }
+
+      this.disabled = true;
+      const icon = this.querySelector('i');
+      const text = this.querySelector('.update-btn-text');
+      if (icon) icon.className = 'bi bi-hourglass-split spinner';
+      if (text) text.textContent = 'Updating...';
+      
+      fetch('/api/confirm_update_ticket_with_scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ updated_content: updatedContent })
+      })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        
+        this.disabled = false;
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Confirm Update';
+        
+        if (!res.ok || !data.success) {
+          showAlert(data.error || 'Failed to update Test Plan.', 'danger');
+          return;
+        }
+        
+        hideModernModal(); // Close the modal
+        showAlert(data.message || 'Test Plan updated successfully!', 'success');
+        
+        // Refresh the page to show updated content
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      })
+      .catch(err => {
+        this.disabled = false;
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Confirm Update';
+        showAlert('Network error: ' + err.message, 'danger');
+      });
+    });
+  }
+
 
   // Inline chat functionality
   function toggleInlineChat(triggerButton) {

@@ -922,7 +922,7 @@ def update_jira_issue_description(issue_key, new_description):
 
 @app.route('/api/update_ticket_with_scenarios', methods=['POST'])
 def update_ticket_with_scenarios():
-    """Update the selected Jira ticket by appending generated test scenarios to its description."""
+    """Update the selected Jira ticket by appending generated test scenarios to the Test Plan custom field."""
     try:
         # Check if user is connected to Jira
         if not session.get('jira_connected'):
@@ -942,7 +942,7 @@ def update_ticket_with_scenarios():
         
         issue_key = selected['key']
         
-        # Fetch current issue description from Jira
+        # Fetch current custom field content from Jira
         try:
             client = get_jira_client()
             
@@ -956,59 +956,196 @@ def update_ticket_with_scenarios():
                 logger.error(f"Failed to fetch issue {issue_key}: {issue_data['error']}")
                 return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
             
-            current_description = issue_data.get('fields', {}).get('description')
+            # Get the current Test Plan custom field content
+            current_test_plan = issue_data.get('fields', {}).get('customfield_11334', '')
+            
+            # Convert ADF to text if needed
+            if isinstance(current_test_plan, dict):
+                current_test_plan = adf_to_text(current_test_plan)
+            elif current_test_plan is None:
+                current_test_plan = ''
+            
+            logger.debug(f"Current Test Plan content for {issue_key}: {current_test_plan[:200]}...")
             
         except Exception as e:
             logger.error(f"Error fetching issue {issue_key}: {str(e)}")
             return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
         
-        # Prepare the test scenarios text to append
-        scenarios_text = "\n\n--- Generated Test Scenarios ---\n\n"
-        for i, scenario in enumerate(test_scenarios, 1):
-            scenarios_text += f"{i}. {scenario}\n"
+        # Parse and update the Test Plan content
+        updated_test_plan = update_test_plan_scenarios(current_test_plan, test_scenarios)
         
-        # Create new description
-        if current_description:
-            if isinstance(current_description, str):
-                # Plain text description
-                new_description_text = current_description + scenarios_text
-            else:
-                # ADF description - convert to text first, then append
-                current_text = adf_to_text(current_description)
-                new_description_text = current_text + scenarios_text
-        else:
-            # No existing description
-            new_description_text = scenarios_text.strip()
-        
-        # Convert to ADF format
-        new_description_adf = text_to_adf(new_description_text)
-        
-        # Update using JIRA client
-        success, error_message = update_jira_issue_description(issue_key, new_description_adf)
-        
-        if success:
-            # Update the session with new description
-            selected['description'] = new_description_text
-            selected['description_html'] = None  # Clear cached HTML
-            session['selected_ticket'] = selected
-            
-            logger.info(f"Successfully updated issue {issue_key} with test scenarios")
-            return jsonify({
-                'success': True, 
-                'message': f'Successfully updated {issue_key} with test scenarios.'
-            }), 200
-        else:
-            return jsonify({
-                'success': False, 
-                'error': error_message or 'Failed to update ticket.'
-            }), 500
+        # Return preview for user confirmation
+        return jsonify({
+            'success': True, 
+            'preview': True,
+            'current_content': current_test_plan,
+            'updated_content': updated_test_plan,
+            'message': 'Preview of Test Plan update. Please confirm to proceed.'
+        }), 200
             
     except Exception as e:
         logger.exception(f"Unexpected error in update_ticket_with_scenarios: {str(e)}")
         return jsonify({
             'success': False, 
+            'error': 'Internal server error occurred while preparing ticket update.'
+        }), 500
+
+@app.route('/api/confirm_update_ticket_with_scenarios', methods=['POST'])
+def confirm_update_ticket_with_scenarios():
+    """Confirm and execute the Test Plan custom field update."""
+    try:
+        # Check if user is connected to Jira
+        if not session.get('jira_connected'):
+            logger.warning("Confirm update attempted without Jira connection")
+            return jsonify({'success': False, 'error': 'Not connected to Jira.'}), 403
+        
+        # Get selected ticket and test scenarios from session
+        selected = session.get('selected_ticket', {})
+        if not selected or not selected.get('key'):
+            logger.warning("Confirm update attempted without selected ticket")
+            return jsonify({'success': False, 'error': 'No ticket selected.'}), 400
+        
+        test_scenarios = selected.get('test_scenarios', [])
+        if not test_scenarios:
+            logger.warning("Confirm update attempted without test scenarios")
+            return jsonify({'success': False, 'error': 'No test scenarios available to add.'}), 400
+        
+        issue_key = selected['key']
+        
+        # Get the updated content from request
+        data = request.get_json() or {}
+        updated_content = data.get('updated_content', '')
+        
+        if not updated_content:
+            return jsonify({'success': False, 'error': 'No updated content provided.'}), 400
+        
+        # Update the custom field using JIRA client
+        try:
+            client = get_jira_client()
+            
+            if not client.is_authenticated():
+                logger.error(f"Not authenticated with Jira for issue {issue_key}")
+                return jsonify({'success': False, 'error': 'Not authenticated with Jira.'}), 403
+            
+            # Use JIRA library method to update the custom field
+            result = client.update_issue(issue_key, **{"customfield_11334": updated_content})
+            
+            if result.get('success'):
+                # Update the session with new test plan content
+                selected['test_plan_field'] = updated_content
+                session['selected_ticket'] = selected
+                
+                logger.info(f"Successfully updated Test Plan for issue {issue_key}")
+                return jsonify({
+                    'success': True, 
+                    'message': f'Successfully updated Test Plan for {issue_key}.'
+                }), 200
+            else:
+                error_msg = result.get('error', 'Failed to update Test Plan.')
+                logger.error(f"Failed to update Test Plan for {issue_key}: {error_msg}")
+                return jsonify({
+                    'success': False, 
+                    'error': error_msg
+                }), 500
+                
+        except Exception as e:
+            logger.error(f"Error updating Test Plan for {issue_key}: {str(e)}")
+            return jsonify({'success': False, 'error': 'Failed to update Test Plan.'}), 500
+            
+    except Exception as e:
+        logger.exception(f"Unexpected error in confirm_update_ticket_with_scenarios: {str(e)}")
+        return jsonify({
+            'success': False, 
             'error': 'Internal server error occurred while updating ticket.'
         }), 500
+
+@logutil.log_exceptions
+def update_test_plan_scenarios(current_content, test_scenarios):
+    """
+    Update the Test Scenarios section in the Test Plan content.
+    
+    Args:
+        current_content: Current Test Plan content
+        test_scenarios: List of test scenarios to add
+        
+    Returns:
+        Updated Test Plan content with scenarios
+    """
+    if not current_content:
+        # If no existing content, create a basic template
+        current_content = (
+            "Testing Environment URL: \n\n"
+            "Permissions: \n\n"
+            "Prerequisites: \n\n"
+            "Testing Tools: \n\n"
+            "Navigation: \n\n"
+            "Test Data: \n\n"
+            "Test Scenarios: \n\n"
+            "Approved By: \n\n\n"
+        )
+    
+    # Find the Test Scenarios section
+    lines = current_content.split('\n')
+    updated_lines = []
+    scenarios_section_found = False
+    scenarios_added = False
+    
+    for i, line in enumerate(lines):
+        if 'Test Scenarios:' in line and not scenarios_section_found:
+            scenarios_section_found = True
+            updated_lines.append(line)
+            
+            # Add an empty line after "Test Scenarios:"
+            updated_lines.append('')
+            
+            # Add the numbered test scenarios
+            for j, scenario in enumerate(test_scenarios, 1):
+                updated_lines.append(f"{j}. {scenario}")
+            
+            updated_lines.append('')  # Add empty line after scenarios
+            scenarios_added = True
+            
+            # Skip existing content until we find the next section or "Approved By:"
+            k = i + 1
+            while k < len(lines):
+                next_line = lines[k].strip()
+                # Stop when we find the next section (containing ":" and not empty)
+                if next_line and ':' in next_line and not next_line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
+                    break
+                k += 1
+            
+            # Continue from the next section
+            for remaining_line in lines[k:]:
+                updated_lines.append(remaining_line)
+            break
+        else:
+            updated_lines.append(line)
+    
+    # If Test Scenarios section wasn't found, append it before "Approved By:"
+    if not scenarios_added:
+        # Look for "Approved By:" and insert before it
+        for i, line in enumerate(updated_lines):
+            if 'Approved By:' in line:
+                # Insert Test Scenarios section before Approved By
+                updated_lines.insert(i, 'Test Scenarios: ')
+                updated_lines.insert(i + 1, '')
+                
+                for j, scenario in enumerate(test_scenarios, 1):
+                    updated_lines.insert(i + 2 + j, f"{j}. {scenario}")
+                
+                updated_lines.insert(i + 2 + len(test_scenarios), '')
+                break
+        else:
+            # If "Approved By:" not found, append at the end
+            updated_lines.extend([
+                'Test Scenarios: ',
+                ''
+            ])
+            for j, scenario in enumerate(test_scenarios, 1):
+                updated_lines.append(f"{j}. {scenario}")
+            updated_lines.extend(['', 'Approved By: ', '', ''])
+    
+    return '\n'.join(updated_lines)
 
 def generate_scenarios_with_ai(description, prompt=None):
     if not description:
