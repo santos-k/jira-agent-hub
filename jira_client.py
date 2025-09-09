@@ -320,6 +320,18 @@ class JiraClient:
                 issue_data["renderedFields"] = {}
                 if hasattr(rendered_fields, 'description') and getattr(rendered_fields, 'description', None):
                     issue_data["renderedFields"]["description"] = getattr(rendered_fields, 'description')
+                # Add custom field for test scenarios if available
+                custom_field_rendered = getattr(rendered_fields, 'customfield_11334', None)
+                if custom_field_rendered:
+                    issue_data["renderedFields"]["customfield_11334"] = custom_field_rendered
+                    logger.debug(f"Found rendered customfield_11334: {str(custom_field_rendered)[:200]}...")
+            
+            # Add custom field for test scenarios (raw value)
+            if hasattr(issue.fields, 'customfield_11334'):
+                raw_custom_field = getattr(issue.fields, 'customfield_11334', None)
+                issue_data["fields"]["customfield_11334"] = raw_custom_field
+                if raw_custom_field:
+                    logger.debug(f"Found raw customfield_11334: {type(raw_custom_field)} - {str(raw_custom_field)[:200]}...")
             
             logger.info(f"Successfully fetched issue: {issue_key}")
             return issue_data

@@ -675,6 +675,102 @@ body {
   color: var(--text-primary) !important;
 }
 
+/* Modern Tabs for Description/Test Scenarios */
+.nav-tabs {
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.nav-tabs .nav-link {
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.875rem 1.5rem;
+  margin-right: 0.5rem;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-tabs .nav-link::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary-gradient);
+  transform: scaleX(0);
+  transition: var(--transition-normal);
+}
+
+.nav-tabs .nav-link:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+  background: rgba(102, 126, 234, 0.15);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+
+.nav-tabs .nav-link.active::before {
+  transform: scaleX(1);
+}
+
+.nav-tabs .nav-link i {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+.tab-content {
+  background: var(--bg-surface);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  transition: var(--transition-normal);
+}
+
+.tab-pane {
+  min-height: 150px;
+}
+
+.tab-pane .text-muted {
+  font-style: italic;
+  text-align: center;
+  padding: 2rem;
+  background: rgba(108, 117, 125, 0.05);
+  border-radius: var(--border-radius-md);
+  border: 2px dashed rgba(108, 117, 125, 0.2);
+}
+
+/* Dark theme adjustments for tabs */
+[data-bs-theme="dark"] .nav-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link:hover {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+  background: rgba(102, 126, 234, 0.25);
+}
+
+[data-bs-theme="dark"] .tab-content {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .tab-pane .text-muted {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Responsive adjustments for modern table */
 @media (max-width: 768px) {
   .table-header,

@@ -202,17 +202,42 @@ document.addEventListener('DOMContentLoaded', function () {
       <div class="collapse show" id="selectedInfoContent">
         <div class="card-body">`;
 
-    if (selected.description_html || selected.description) {
+    if (selected.description_html || selected.description || selected.test_scenarios_field) {
       infoHtml += `<div class="card mt-2">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="false" aria-controls="descriptionContent">
-            <i class="bi bi-chevron-right" id="descriptionIcon"></i>
-            Description
+          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionTabsContent" aria-expanded="false" aria-controls="descriptionTabsContent">
+            <i class="bi bi-chevron-right" id="descriptionTabsIcon"></i>
+            Description & Test Scenarios
           </button>
         </div>
-        <div class="collapse" id="descriptionContent">
+        <div class="collapse" id="descriptionTabsContent">
           <div class="card-body">
-            <div class="adf-desc" ${selected.description && !selected.description_html ? 'style="white-space: pre-wrap;"' : ''}></div>
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs mb-3" id="descriptionTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description-pane" type="button" role="tab" aria-controls="description-pane" aria-selected="true">
+                  <i class="bi bi-file-text"></i> Description
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#test-scenarios-pane" type="button" role="tab" aria-controls="test-scenarios-pane" aria-selected="false">
+                  <i class="bi bi-list-check"></i> Test Scenarios
+                </button>
+              </li>
+            </ul>
+            
+            <!-- Tabs Content -->
+            <div class="tab-content" id="descriptionTabsContentInner">
+              <!-- Description Tab -->
+              <div class="tab-pane fade show active" id="description-pane" role="tabpanel" aria-labelledby="description-tab">
+                <div class="adf-desc"></div>
+              </div>
+              
+              <!-- Test Scenarios Tab -->
+              <div class="tab-pane fade" id="test-scenarios-pane" role="tabpanel" aria-labelledby="test-scenarios-tab">
+                <div class="test-scenarios-field"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>`;
@@ -256,11 +281,25 @@ document.addEventListener('DOMContentLoaded', function () {
     selInfo.innerHTML = infoHtml;
 
     const descDiv = selInfo.querySelector('.adf-desc');
+    const testScenariosDiv = selInfo.querySelector('.test-scenarios-field');
+    
     if (descDiv) {
       if (selected.description_html) {
         descDiv.innerHTML = selected.description_html;
       } else if (selected.description) {
         descDiv.textContent = selected.description;
+        descDiv.style.whiteSpace = 'pre-wrap';
+      } else {
+        descDiv.innerHTML = '<div class="text-muted">No description available</div>';
+      }
+    }
+    
+    if (testScenariosDiv) {
+      if (selected.test_scenarios_field) {
+        console.log('Test scenarios field data:', selected.test_scenarios_field);
+        testScenariosDiv.innerHTML = selected.test_scenarios_field;
+      } else {
+        testScenariosDiv.innerHTML = '<div class="text-muted">No test scenarios available</div>';
       }
     }
 
@@ -284,15 +323,15 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Handle description collapse
-    const descriptionContent = document.getElementById('descriptionContent');
-    const descriptionIcon = document.getElementById('descriptionIcon');
-    if (descriptionContent && descriptionIcon) {
-      descriptionContent.addEventListener('show.bs.collapse', function () {
-        descriptionIcon.className = 'bi bi-chevron-down';
+    // Handle description tabs collapse
+    const descriptionTabsContent = document.getElementById('descriptionTabsContent');
+    const descriptionTabsIcon = document.getElementById('descriptionTabsIcon');
+    if (descriptionTabsContent && descriptionTabsIcon) {
+      descriptionTabsContent.addEventListener('show.bs.collapse', function () {
+        descriptionTabsIcon.className = 'bi bi-chevron-down';
       });
-      descriptionContent.addEventListener('hide.bs.collapse', function () {
-        descriptionIcon.className = 'bi bi-chevron-right';
+      descriptionTabsContent.addEventListener('hide.bs.collapse', function () {
+        descriptionTabsIcon.className = 'bi bi-chevron-right';
       });
     }
 
@@ -1171,21 +1210,21 @@ function convertTimestampsToLocalTime() {
         return;
       }
       
-      // Format to user's local timezone without timezone abbreviation
+      // Format to user's local timezone in the required format
       const options = {
         year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: false, // Use 24-hour format
+        hour12: true, // Use 12-hour format with AM/PM
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
       
-      // Get the formatted string without timezone
+      // Get the formatted string
       const localTimeString = date.toLocaleString('en-US', options);
       
-      // Update the element with local time (date and time only)
+      // Update the element with local time (format: "June 23, 2025, 10:15 AM")
       element.textContent = localTimeString;
       element.title = `Original UTC: ${isoTimestamp}`; // Show original UTC time on hover
       

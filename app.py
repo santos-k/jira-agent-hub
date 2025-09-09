@@ -113,13 +113,102 @@ def adf_to_text(node):
         # If node has content, recurse
         if 'content' in node and isinstance(node['content'], list):
             for child in node['content']:
-                text_parts.append(adf_to_text(child))
+                child_text = adf_to_text(child)
+                if child_text:
+                    text_parts.append(child_text)
+        # Handle different node types
+        node_type = node.get('type', '')
+        if node_type == 'paragraph':
+            text_parts.append('\n')
+        elif node_type == 'hardBreak':
+            text_parts.append('\n')
+        elif node_type in ['bulletList', 'orderedList']:
+            text_parts.append('\n')
+        elif node_type == 'listItem':
+            text_parts.insert(0, '• ')
+            text_parts.append('\n')
     elif isinstance(node, list):
         for n in node:
-            text_parts.append(adf_to_text(n))
+            child_text = adf_to_text(n)
+            if child_text:
+                text_parts.append(child_text)
     result = ''.join([p for p in text_parts if p])
     logger.debug("Extracted text from ADF node: %s", (result[:200] + '...') if len(result) > 200 else result)
     return result
+
+@logutil.log_exceptions
+def process_test_scenarios_content(content):
+    """
+    Process test scenarios content to ensure it's properly formatted as HTML.
+    Handles plain text, markdown, and existing HTML content.
+    """
+    if not content:
+        return ''
+    
+    if isinstance(content, str):
+        # If it's a string, check if it contains HTML tags
+        if '<' in content and '>' in content:
+            return content
+        else:
+            # Convert plain text to HTML with proper line breaks
+            html_content = content.replace('\n', '<br>\n')
+            # If it looks like markdown, convert basic markdown elements
+            import re
+            # Convert **bold** to <strong>bold</strong>
+            html_content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html_content)
+            # Convert *italic* to <em>italic</em>  
+            html_content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html_content)
+            # Convert markdown links [text](url) to <a href="url">text</a>
+            html_content = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', html_content)
+            
+            # Convert markdown lists
+            lines = html_content.split('\n')
+            processed_lines = []
+            in_list = False
+            list_type = None
+            
+            for line in lines:
+                if re.match(r'^\s*[-*+]\s+', line):
+                    if not in_list:
+                        processed_lines.append('<ul>')
+                        in_list = True
+                        list_type = 'ul'
+                    elif list_type != 'ul':
+                        processed_lines.append('</ol>')
+                        processed_lines.append('<ul>')
+                        list_type = 'ul'
+                    processed_lines.append(f'<li>{re.sub(r"^\s*[-*+]\s+", "", line)}</li>')
+                elif re.match(r'^\s*\d+\.\s+', line):
+                    if not in_list:
+                        processed_lines.append('<ol>')
+                        in_list = True
+                        list_type = 'ol'
+                    elif list_type != 'ol':
+                        processed_lines.append('</ul>')
+                        processed_lines.append('<ol>')
+                        list_type = 'ol'
+                    processed_lines.append(f'<li>{re.sub(r"^\s*\d+\.\s+", "", line)}</li>')
+                else:
+                    if in_list:
+                        if list_type == 'ul':
+                            processed_lines.append('</ul>')
+                        else:
+                            processed_lines.append('</ol>')
+                        in_list = False
+                        list_type = None
+                    processed_lines.append(line)
+            
+            # Close any open list at the end
+            if in_list:
+                if list_type == 'ul':
+                    processed_lines.append('</ul>')
+                else:
+                    processed_lines.append('</ol>')
+            
+            return '\n'.join(processed_lines)
+    else:
+        # Handle ADF or other structured content
+        return adf_to_text(content)
 
 # Routes
 @app.route("/", methods=["GET"])
@@ -303,6 +392,7 @@ def select_ticket():
     # Attempt to fetch description for the selected issue from Jira
     description_text = ''
     description_html = ''
+    test_scenarios_html = ''
     try:
         jira_url = session.get('jira_url')
         email = session.get('jira_email')
@@ -323,14 +413,33 @@ def select_ticket():
                 rendered_desc = issue_data.get('renderedFields', {}).get('description')
                 if rendered_desc:
                     description_html = rendered_desc
+                
+                # Get test scenarios from custom field
+                test_scenarios_raw = issue_data.get('fields', {}).get('customfield_11334')
+                test_scenarios_html = ''
+                if test_scenarios_raw:
+                    logger.debug(f"Test scenarios raw data for {key}: {type(test_scenarios_raw)} - {str(test_scenarios_raw)[:200]}...")
+                    # Try to get rendered version first
+                    rendered_test_scenarios = issue_data.get('renderedFields', {}).get('customfield_11334')
+                    if rendered_test_scenarios:
+                        test_scenarios_html = rendered_test_scenarios
+                        logger.debug(f"Using rendered test scenarios for {key}: {str(rendered_test_scenarios)[:200]}...")
+                    else:
+                        # Process the raw content (could be ADF, markdown, or plain text)
+                        test_scenarios_html = process_test_scenarios_content(test_scenarios_raw)
+                        logger.debug(f"Processed test scenarios for {key}: {str(test_scenarios_html)[:200]}...")
+                else:
+                    logger.debug(f"No test scenarios found for {key}")
             else:
                 logger.warning("Failed to fetch issue %s: %s", key, issue_data.get('error'))
                 description_text = ''
                 description_html = ''
+                test_scenarios_html = ''
     except Exception:
         logger.exception("Exception while fetching issue %s", key)
         description_text = ''
         description_html = ''
+        test_scenarios_html = ''
 
     # store ticket info including description in session
     session['selected_ticket'] = {
@@ -338,7 +447,8 @@ def select_ticket():
         'url': url,
         'summary': summary,
         'description': description_text,
-        'description_html': description_html
+        'description_html': description_html,
+        'test_scenarios_field': test_scenarios_html
     }
     logger.info("Ticket selected: %s", key)
     return jsonify({'success': True, 'selected': session['selected_ticket']})
@@ -461,6 +571,7 @@ def refresh():
         summary = selected.get('summary', '')
         description_text = ''
         description_html = ''
+        test_scenarios_html = ''
         try:
             logger.debug("Refreshing issue %s using JIRA client", key)
             client = JiraClient(jira_url, email, api_token)
@@ -475,20 +586,35 @@ def refresh():
                 rendered_desc = issue_data.get('renderedFields', {}).get('description')
                 if rendered_desc:
                     description_html = rendered_desc
+                
+                # Get test scenarios from custom field
+                test_scenarios_raw = issue_data.get('fields', {}).get('customfield_11334')
+                test_scenarios_html = ''
+                if test_scenarios_raw:
+                    # Try to get rendered version first
+                    rendered_test_scenarios = issue_data.get('renderedFields', {}).get('customfield_11334')
+                    if rendered_test_scenarios:
+                        test_scenarios_html = rendered_test_scenarios
+                    else:
+                        # Process the raw content (could be ADF, markdown, or plain text)
+                        test_scenarios_html = process_test_scenarios_content(test_scenarios_raw)
             else:
                 logger.warning("Failed to refresh issue %s: %s", key, issue_data.get('error'))
                 description_text = ''
                 description_html = ''
+                test_scenarios_html = ''
         except Exception:
             logger.exception("Exception while refreshing issue %s", key)
             description_text = ''
             description_html = ''
+            test_scenarios_html = ''
         selected_info = {
             'key': key,
             'url': url,
             'summary': summary,
             'description': description_text,
-            'description_html': description_html
+            'description_html': description_html,
+            'test_scenarios_field': test_scenarios_html
         }
         session['selected_ticket'] = selected_info
     logger.info("Refresh completed: %d results", len(results))

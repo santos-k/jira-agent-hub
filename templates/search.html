@@ -109,21 +109,52 @@
               </div>
               <div class="collapse show" id="selectedInfoContent">
                 <div class="card-body">
-                  {% if selected.description_html or selected.description %}
+                  {% if selected.description_html or selected.description or selected.test_scenarios_field %}
                     <div class="card mt-2">
                       <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionContent" aria-expanded="false" aria-controls="descriptionContent">
-                          <i class="bi bi-chevron-right" id="descriptionIcon"></i>
-                          Description
+                        <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionTabsContent" aria-expanded="false" aria-controls="descriptionTabsContent">
+                          <i class="bi bi-chevron-right" id="descriptionTabsIcon"></i>
+                          Description & Test Scenarios
                         </button>
                       </div>
-                      <div class="collapse" id="descriptionContent">
+                      <div class="collapse" id="descriptionTabsContent">
                         <div class="card-body">
-                          {% if selected.description_html %}
-                            <div>{{ selected.description_html | safe }}</div>
-                          {% else %}
-                            <div style="white-space: pre-wrap;">{{ selected.description }}</div>
-                          {% endif %}
+                          <!-- Tabs Navigation -->
+                          <ul class="nav nav-tabs mb-3" id="descriptionTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                              <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description-pane" type="button" role="tab" aria-controls="description-pane" aria-selected="true">
+                                <i class="bi bi-file-text"></i> Description
+                              </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                              <button class="nav-link" id="test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#test-scenarios-pane" type="button" role="tab" aria-controls="test-scenarios-pane" aria-selected="false">
+                                <i class="bi bi-list-check"></i> Test Scenarios
+                              </button>
+                            </li>
+                          </ul>
+                          
+                          <!-- Tabs Content -->
+                          <div class="tab-content" id="descriptionTabsContent">
+                            <!-- Description Tab -->
+                            <div class="tab-pane fade show active" id="description-pane" role="tabpanel" aria-labelledby="description-tab">
+                              {% if selected.description_html %}
+                                <div>{{ selected.description_html | safe }}</div>
+                              {% elif selected.description %}
+                                <div style="white-space: pre-wrap;">{{ selected.description }}</div>
+                              {% else %}
+                                <div class="text-muted">No description available</div>
+                              {% endif %}
+                            </div>
+                            
+                            <!-- Test Scenarios Tab -->
+                            <div class="tab-pane fade" id="test-scenarios-pane" role="tabpanel" aria-labelledby="test-scenarios-tab">
+                              {% if selected.test_scenarios_field %}
+                                <div>{{ selected.test_scenarios_field | safe }}</div>
+                              {% else %}
+                                <div class="text-muted">No test scenarios available</div>
+                              {% endif %}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
