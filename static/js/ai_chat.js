@@ -67,7 +67,19 @@ class AiChat {
                 const input = document.getElementById('aiKeyInput');
                 const key = input.value.trim();
                 if (!key) return;
-                // send key to backend to store in session
+                // Send key to backend to store in session with loading state
+                const submitBtn = aiKeyForm.querySelector('button[type="submit"]');
+                const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
+                            
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('loading');
+                    submitBtn.innerHTML = '<div class="loading-spinner loading-spinner-sm"></div><span class="ms-2">Saving...</span>';
+                }
+                            
+                input.disabled = true;
+                input.classList.add('loading-pulse');
+                            
                 fetch('/api/ai/set_key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: key }) })
                     .then(async res => {
                         const data = await res.json().catch(() => ({}));
@@ -85,7 +97,17 @@ class AiChat {
                     .catch(err => {
                         console.error('Failed to save API key', err);
                         alert('Network error saving API key');
-                    });
+                    })
+                .finally(() => {
+                    // Remove loading states
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('loading');
+                        submitBtn.innerHTML = originalBtnContent;
+                    }
+                    input.disabled = false;
+                    input.classList.remove('loading-pulse');
+                });
             });
         }
 
@@ -96,6 +118,9 @@ class AiChat {
                 try {
                     // Disable the button to prevent double-clicks
                     aiLogoutBtn.disabled = true;
+                    aiLogoutBtn.classList.add('loading');
+                    const originalContent = aiLogoutBtn.innerHTML;
+                    aiLogoutBtn.innerHTML = '<div class="loading-spinner loading-spinner-sm"></div>';
                     
                     // Clear both API key and session data sequentially for better reliability
                     const clearKeyResponse = await fetch('/api/ai/clear_key', {
@@ -146,8 +171,10 @@ class AiChat {
                     console.error('Error clearing AI session:', error);
                     this.showAiStatus('Error ending AI session', 'danger');
                 } finally {
-                    // Re-enable the button
+                    // Re-enable the button and restore content
                     aiLogoutBtn.disabled = false;
+                    aiLogoutBtn.classList.remove('loading');
+                    aiLogoutBtn.innerHTML = originalContent;
                 }
             });
         }
@@ -160,6 +187,8 @@ class AiChat {
             // Add loading state to button
             button.classList.add('loading');
             button.disabled = true;
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<div class="loading-spinner loading-spinner-sm"></div><span class="d-none d-md-inline ms-2">Checking...</span>';
             
             // Add a small delay to ensure any logout operations have completed
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -199,6 +228,7 @@ class AiChat {
             // Remove loading state
             button.classList.remove('loading');
             button.disabled = false;
+            button.innerHTML = '<i class="bi bi-robot"></i><span class="d-none d-md-inline ms-2">AI Assistant</span><div class="ai-pulse"></div>';
         }
     }
 
@@ -222,10 +252,19 @@ class AiChat {
         this.input.value = '';
         this.sendUIEvent({ category: 'ai_chat', event: 'send_message', extra: { length: message.length } });
 
-        // Show loading AI bubble
+        // Show loading AI bubble with enhanced animation
         const loadingId = this.addLoadingMessage();
         this.loadingMessageId = loadingId;
+        
+        // Add loading state to send button
         this.sendButton.disabled = true;
+        this.sendButton.classList.add('loading');
+        const originalSendContent = this.sendButton.innerHTML;
+        this.sendButton.innerHTML = '<div class="loading-spinner loading-spinner-sm"></div>';
+        
+        // Add loading state to input
+        this.input.disabled = true;
+        this.input.classList.add('loading-pulse');
 
         try {
             const res = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
@@ -241,7 +280,6 @@ class AiChat {
                     this.replaceLoadingWithMessage(loadingId, errMsg, 'ai');
                 }
                 this.sendUIEvent({ category: 'ai_chat', event: 'response_error', extra: { error: errMsg } });
-                this.sendButton.disabled = false;
                 return;
             }
             const aiText = data.response || '';
@@ -252,7 +290,12 @@ class AiChat {
             this.replaceLoadingWithMessage(loadingId, 'AI service unavailable', 'ai');
             this.sendUIEvent({ category: 'ai_chat', event: 'response_error', extra: { error: e.message } });
         } finally {
+            // Remove all loading states
             this.sendButton.disabled = false;
+            this.sendButton.classList.remove('loading');
+            this.sendButton.innerHTML = originalSendContent;
+            this.input.disabled = false;
+            this.input.classList.remove('loading-pulse');
             this.loadingMessageId = null;
         }
     }
@@ -262,7 +305,7 @@ class AiChat {
         messageDiv.className = `chat-message ai-message loading`;
         const textDiv = document.createElement('div');
         textDiv.className = 'message-text';
-        textDiv.textContent = '…';
+        textDiv.innerHTML = '<div class="ai-thinking"><span></span><span></span><span></span></div>';
         messageDiv.appendChild(textDiv);
         this.messageContainer.appendChild(messageDiv);
         this.messageContainer.scrollTop = this.messageContainer.scrollHeight;

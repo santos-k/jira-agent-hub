@@ -66,6 +66,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      // Add loading state to the form
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.classList.add('loading');
+      submitBtn.innerHTML = '<span class="loading-text">Connecting</span>';
+      loginForm.classList.add('form-loading');
+
       fetch('/connect', {
         method: 'POST',
         headers: {
@@ -92,6 +100,13 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(err => {
           showAlert('Network error: ' + err.message, 'danger');
+        })
+        .finally(() => {
+          // Remove loading state
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('loading');
+          submitBtn.innerHTML = originalBtnText;
+          loginForm.classList.remove('form-loading');
         });
     });
   }
@@ -121,6 +136,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const key = this.value;
         const url = this.dataset.url;
         const summary = this.dataset.summary || '';
+
+        // Add loading state to the selected ticket area
+        const selectedInfo = document.getElementById('selectedInfo');
+        if (selectedInfo) {
+          selectedInfo.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div></div>';
+        }
 
         fetch('/select', {
           method: 'POST',
@@ -382,18 +403,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const deselectBtn = document.getElementById('deselectBtn');
     if (deselectBtn) {
       deselectBtn.onclick = function () {
+        // Add brief loading state
+        const originalIcon = this.querySelector('i');
+        const originalText = this.querySelector('.btn-text');
+        
+        this.disabled = true;
+        this.classList.add('loading');
+        if (originalIcon) originalIcon.className = 'bi bi-hourglass-split spinner';
+        if (originalText) originalText.textContent = 'Deselecting...';
+        
         fetch('/clear_selected', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           }
-        }).then(() => {
+        })
+        .then(() => {
           updateSelectedTicketUI({});
           const radios = document.querySelectorAll('input[type="radio"][name="selected_ticket"]');
           radios.forEach(r => { r.checked = false; });
-        }).catch(err => {
+        })
+        .catch(err => {
           updateSelectedTicketUI({ error: 'Network error: ' + err.message });
+        })
+        .finally(() => {
+          // Remove loading state
+          this.disabled = false;
+          this.classList.remove('loading');
+          if (originalIcon) originalIcon.className = 'bi bi-x-circle';
+          if (originalText) originalText.textContent = 'Deselect';
         });
       };
     }
@@ -435,11 +474,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const originalText = btn.querySelector('.btn-text');
         const hasExistingScenarios = selInfo.querySelector('#testScenariosContent');
         
-        // Keep icon static, only change text
-        if (originalIcon) originalIcon.className = 'bi bi-magic';
+        // Add loading state with spinner
+        if (originalIcon) originalIcon.className = 'bi bi-hourglass-split spinner';
         if (originalText) {
           originalText.textContent = hasExistingScenarios ? 'Regenerating...' : 'Generating...';
         }
+        btn.classList.add('loading');
 
         // Remove any previous error alerts
         const oldAlerts = selInfo.querySelectorAll('.alert-warning, .alert-danger');
@@ -455,6 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(async res => {
           btn.disabled = false;
+          btn.classList.remove('loading');
           if (originalIcon) originalIcon.className = 'bi bi-magic';
           if (originalText) originalText.textContent = 'Regenerate Test Scenarios';
           
@@ -523,6 +564,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(err => {
           btn.disabled = false;
+          btn.classList.remove('loading');
           if (originalIcon) originalIcon.className = 'bi bi-magic';
           if (originalText) {
             const hasExistingScenarios = selInfo.querySelector('#testScenariosContent');
@@ -654,9 +696,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmButton = document.getElementById('confirmUpdateTicket');
     const buttonText = confirmButton.querySelector('.update-btn-text');
     const buttonIcon = confirmButton.querySelector('i');
+    const modal = document.getElementById('updateTicketModal');
     
-    // Show loading state
+    // Add loading overlay to the entire modal
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'modal-loading';
+    loadingOverlay.innerHTML = `
+      <div class="loading-spinner loading-spinner-lg"></div>
+      <div class="loading-message">Loading test plan preview...</div>
+    `;
+    modal.appendChild(loadingOverlay);
+    
+    // Show loading state on button
     confirmButton.disabled = true;
+    confirmButton.classList.add('loading');
     if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split spinner';
     if (buttonText) buttonText.textContent = 'Loading Preview...';
     
@@ -670,11 +723,6 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .then(async response => {
       const data = await response.json().catch(() => ({}));
-      
-      // Re-enable button
-      confirmButton.disabled = false;
-      if (buttonIcon) buttonIcon.className = 'bi bi-check-circle';
-      if (buttonText) buttonText.textContent = 'Confirm Update';
       
       if (response.ok && data.success && data.preview) {
         // Show preview in the existing modal immediately
@@ -692,16 +740,24 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })
     .catch(error => {
-      // Re-enable button
-      confirmButton.disabled = false;
-      if (buttonIcon) buttonIcon.className = 'bi bi-exclamation-triangle';
-      if (buttonText) buttonText.textContent = 'Retry Loading';
-      
       console.error('Load preview error:', error);
       showAlert('Network error occurred while loading preview. Please try again.', 'danger');
       
       // Set up retry handler
       setupDirectConfirmation(null); // null indicates retry mode
+    })
+    .finally(() => {
+      // Remove loading overlay and restore button state
+      if (loadingOverlay && loadingOverlay.parentNode) {
+        loadingOverlay.remove();
+      }
+      
+      confirmButton.disabled = false;
+      confirmButton.classList.remove('loading');
+      if (buttonIcon) buttonIcon.className = 'bi bi-check-circle';
+      if (buttonText && !buttonText.textContent.includes('Retry')) {
+        buttonText.textContent = 'Confirm Update';
+      }
     });
   }
 
@@ -749,7 +805,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      // Add loading overlay to modal
+      const modal = document.getElementById('updateTicketModal');
+      const loadingOverlay = document.createElement('div');
+      loadingOverlay.className = 'modal-loading';
+      loadingOverlay.innerHTML = `
+        <div class="loading-spinner loading-spinner-lg"></div>
+        <div class="loading-message">Updating ticket test plan...</div>
+      `;
+      modal.appendChild(loadingOverlay);
+      
       this.disabled = true;
+      this.classList.add('loading');
       const icon = this.querySelector('i');
       const text = this.querySelector('.update-btn-text');
       if (icon) icon.className = 'bi bi-hourglass-split spinner';
@@ -766,28 +833,43 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(async res => {
         const data = await res.json().catch(() => ({}));
         
-        this.disabled = false;
-        if (icon) icon.className = 'bi bi-check-circle';
-        if (text) text.textContent = 'Confirm Update';
-        
         if (!res.ok || !data.success) {
           showAlert(data.error || 'Failed to update Test Plan.', 'danger');
           return;
         }
         
-        hideModernModal(); // Close the modal
-        showAlert(data.message || 'Test Plan updated successfully!', 'success');
+        // Show success state briefly before closing
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Success!';
+        loadingOverlay.querySelector('.loading-message').textContent = 'Test plan updated successfully!';
         
-        // Refresh the page to show updated content
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          hideModernModal(); // Close the modal
+          showAlert(data.message || 'Test Plan updated successfully!', 'success');
+          
+          // Refresh the page to show updated content
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }, 1000);
       })
       .catch(err => {
-        this.disabled = false;
-        if (icon) icon.className = 'bi bi-check-circle';
-        if (text) text.textContent = 'Confirm Update';
         showAlert('Network error: ' + err.message, 'danger');
+      })
+      .finally(() => {
+        // Remove loading overlay and restore button state (only if not successful)
+        setTimeout(() => {
+          if (loadingOverlay && loadingOverlay.parentNode) {
+            loadingOverlay.remove();
+          }
+          
+          this.disabled = false;
+          this.classList.remove('loading');
+          if (!text || text.textContent !== 'Success!') {
+            if (icon) icon.className = 'bi bi-check-circle';
+            if (text) text.textContent = 'Confirm Update';
+          }
+        }, 500);
       });
     });
   }
@@ -836,7 +918,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      // Add loading overlay to modal
+      const modal = document.getElementById('updateTicketModal');
+      const loadingOverlay = document.createElement('div');
+      loadingOverlay.className = 'modal-loading';
+      loadingOverlay.innerHTML = `
+        <div class="loading-spinner loading-spinner-lg"></div>
+        <div class="loading-message">Updating ticket test plan...</div>
+      `;
+      modal.appendChild(loadingOverlay);
+      
       this.disabled = true;
+      this.classList.add('loading');
       const icon = this.querySelector('i');
       const text = this.querySelector('.update-btn-text');
       if (icon) icon.className = 'bi bi-hourglass-split spinner';
@@ -853,28 +946,43 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(async res => {
         const data = await res.json().catch(() => ({}));
         
-        this.disabled = false;
-        if (icon) icon.className = 'bi bi-check-circle';
-        if (text) text.textContent = 'Confirm Update';
-        
         if (!res.ok || !data.success) {
           showAlert(data.error || 'Failed to update Test Plan.', 'danger');
           return;
         }
         
-        hideModernModal(); // Close the modal
-        showAlert(data.message || 'Test Plan updated successfully!', 'success');
+        // Show success state briefly before closing
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Success!';
+        loadingOverlay.querySelector('.loading-message').textContent = 'Test plan updated successfully!';
         
-        // Refresh the page to show updated content
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          hideModernModal(); // Close the modal
+          showAlert(data.message || 'Test Plan updated successfully!', 'success');
+          
+          // Refresh the page to show updated content
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }, 1000);
       })
       .catch(err => {
-        this.disabled = false;
-        if (icon) icon.className = 'bi bi-check-circle';
-        if (text) text.textContent = 'Confirm Update';
         showAlert('Network error: ' + err.message, 'danger');
+      })
+      .finally(() => {
+        // Remove loading overlay and restore button state (only if not successful)
+        setTimeout(() => {
+          if (loadingOverlay && loadingOverlay.parentNode) {
+            loadingOverlay.remove();
+          }
+          
+          this.disabled = false;
+          this.classList.remove('loading');
+          if (!text || text.textContent !== 'Success!') {
+            if (icon) icon.className = 'bi bi-check-circle';
+            if (text) text.textContent = 'Confirm Update';
+          }
+        }, 500);
       });
     });
   }
@@ -984,15 +1092,16 @@ document.addEventListener('DOMContentLoaded', function () {
       input.value = '';
       input.style.height = 'auto';
       
-      // Show loading
+      // Add loading message to inline chat
       const loadingMsg = document.createElement('div');
       loadingMsg.className = 'inline-chat-message ai';
-      loadingMsg.innerHTML = '<i class="bi bi-three-dots spinner"></i> Generating scenarios...';
+      loadingMsg.innerHTML = '<div class="ai-thinking"><span></span><span></span><span></span></div> Generating scenarios...';
       messages.appendChild(loadingMsg);
       
-      // Disable send button
+      // Disable send button with loading state
       sendBtn.disabled = true;
-      sendBtn.innerHTML = '<i class="bi bi-hourglass spinner"></i>';
+      sendBtn.classList.add('loading');
+      sendBtn.innerHTML = '<div class="loading-spinner loading-spinner-sm"></div>';
       
       // Scroll to bottom
       messages.scrollTop = messages.scrollHeight;
@@ -1008,6 +1117,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!description.trim()) {
         loadingMsg.remove();
         sendBtn.disabled = false;
+        sendBtn.classList.remove('loading');
         sendBtn.innerHTML = '<i class="bi bi-send"></i>';
         
         const errorMsg = document.createElement('div');
@@ -1033,6 +1143,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Re-enable send button
         sendBtn.disabled = false;
+        sendBtn.classList.remove('loading');
         sendBtn.innerHTML = '<i class="bi bi-send"></i>';
         
         const data = await res.json().catch(() => ({}));
@@ -1094,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Re-enable send button
         sendBtn.disabled = false;
+        sendBtn.classList.remove('loading');
         sendBtn.innerHTML = '<i class="bi bi-send"></i>';
         
         const errorMsg = document.createElement('div');
@@ -1135,17 +1247,31 @@ document.addEventListener('DOMContentLoaded', function () {
           const originalIcon = button.querySelector('i');
           const originalText = button.querySelector('.btn-text');
           
+          // Add brief loading state
+          button.classList.add('loading');
+          
           // Change to checkmark
           originalIcon.className = 'bi bi-check-circle';
           if (originalText) originalText.textContent = 'Copied';
           
           // Reset after 2 seconds
           setTimeout(() => {
+            button.classList.remove('loading');
             originalIcon.className = 'bi bi-clipboard';
             if (originalText) originalText.textContent = 'Copy All';
           }, 2000);
         }).catch(err => {
           console.error('Failed to copy: ', err);
+          // Show error state briefly
+          const originalIcon = button.querySelector('i');
+          const originalText = button.querySelector('.btn-text');
+          originalIcon.className = 'bi bi-exclamation-triangle';
+          if (originalText) originalText.textContent = 'Failed';
+          
+          setTimeout(() => {
+            originalIcon.className = 'bi bi-clipboard';
+            if (originalText) originalText.textContent = 'Copy All';
+          }, 2000);
         });
       }
     } else if (e.target.classList.contains('manual-prompt-btn') || e.target.closest('.manual-prompt-btn')) {
@@ -1295,7 +1421,22 @@ document.addEventListener('DOMContentLoaded', function () {
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function () {
+      // Add loading state to refresh button
+      const originalIcon = refreshBtn.querySelector('i');
+      const originalText = refreshBtn.querySelector('.btn-text');
+      const originalContent = refreshBtn.innerHTML;
+      
       refreshBtn.disabled = true;
+      refreshBtn.classList.add('loading');
+      if (originalIcon) originalIcon.className = 'bi bi-arrow-repeat spinner';
+      if (originalText) originalText.textContent = 'Refreshing...';
+      
+      // Add loading overlay to results table if it exists
+      const resultsTable = document.getElementById('resultsTable');
+      if (resultsTable) {
+        resultsTable.classList.add('table-loading');
+      }
+
       fetch('/refresh', {
         method: 'POST',
         headers: {
@@ -1305,13 +1446,11 @@ document.addEventListener('DOMContentLoaded', function () {
       })
       .then(async res => {
         const data = await res.json().catch(() => ({}));
-        refreshBtn.disabled = false;
         if (!res.ok || !data.success) {
           showAlert(data.message || 'Failed to refresh.', 'danger');
           return;
         }
         // Update table
-        const resultsTable = document.getElementById('resultsTable');
         if (resultsTable && data.results) {
           const tableBody = resultsTable.querySelector('.table-body');
           if (tableBody) {
@@ -1351,8 +1490,17 @@ document.addEventListener('DOMContentLoaded', function () {
         convertTimestampsToLocalTime();
       })
       .catch(err => {
-        refreshBtn.disabled = false;
         showAlert('Network error: ' + err.message, 'danger');
+      })
+      .finally(() => {
+        // Remove loading states
+        refreshBtn.disabled = false;
+        refreshBtn.classList.remove('loading');
+        if (originalIcon) originalIcon.className = 'bi bi-arrow-repeat';
+        if (originalText) originalText.textContent = 'Refresh';
+        if (resultsTable) {
+          resultsTable.classList.remove('table-loading');
+        }
       });
     });
   }
@@ -1361,6 +1509,25 @@ document.addEventListener('DOMContentLoaded', function () {
   const searchForm = document.getElementById('searchForm');
   if (searchForm) {
     searchForm.addEventListener('submit', function (e) {
+      // Add loading state to search form
+      const submitBtn = searchForm.querySelector('button[type="submit"]');
+      const searchInput = searchForm.querySelector('input[type="search"], input[name="query"]');
+      const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
+      
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        const icon = submitBtn.querySelector('i');
+        const text = submitBtn.querySelector('.btn-text, span');
+        if (icon) icon.className = 'bi bi-hourglass-split spinner';
+        if (text) text.textContent = 'Searching...';
+      }
+      
+      if (searchInput) {
+        searchInput.classList.add('search-loading');
+        searchInput.disabled = true;
+      }
+      
       // Remove selected ticket info from UI
       const selInfo = document.getElementById('selectedInfo');
       if (selInfo) {
@@ -1377,6 +1544,9 @@ document.addEventListener('DOMContentLoaded', function () {
           'Accept': 'application/json'
         }
       });
+      
+      // Note: The actual search response will remove loading states when the page reloads
+      // or when the response is processed by the server-side rendering
     });
   }
 
