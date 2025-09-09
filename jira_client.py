@@ -75,6 +75,11 @@ class JiraClient:
                 return False
                 
             # Create JIRA instance with basic authentication
+            # Ensure both email and api_token are strings before creating tuple
+            if self.email is None or self.api_token is None:
+                logger.error("Email or API token is None, cannot authenticate")
+                return False
+                
             self.jira = JIRA(
                 server=self.jira_url,
                 basic_auth=(self.email, self.api_token),
@@ -132,17 +137,27 @@ class JiraClient:
         
         try:
             if self.jira:
-                user = self.jira.current_user()
-                user_data = self.jira.user(user)
+                user_key = self.jira.current_user()
+                user_data = self.jira.user(user_key)
             else:
                 return None
             
-            return {
-                'displayName': user_data.displayName,
-                'emailAddress': user_data.emailAddress,
-                'name': user_data.name,
-                'accountId': user_data.accountId
+            # Build user info dict with safe attribute access
+            user_info = {
+                'displayName': getattr(user_data, 'displayName', ''),
+                'emailAddress': getattr(user_data, 'emailAddress', ''),
+                'accountId': getattr(user_data, 'accountId', '')
             }
+            
+            # Add name if available (some Jira instances don't have this field)
+            if hasattr(user_data, 'name'):
+                user_info['name'] = user_data.name
+            elif hasattr(user_data, 'key'):
+                user_info['name'] = user_data.key
+            else:
+                user_info['name'] = user_info['displayName']
+            
+            return user_info
         except Exception as e:
             logger.error(f"Failed to get user info: {e}")
             return None
@@ -207,9 +222,9 @@ class JiraClient:
                 # Add assignee if present
                 if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
                     issue_data["fields"]["assignee"] = {
-                        "displayName": issue.fields.assignee.displayName,
+                        "displayName": getattr(issue.fields.assignee, 'displayName', ''),
                         "emailAddress": getattr(issue.fields.assignee, 'emailAddress', ''),
-                        "accountId": issue.fields.assignee.accountId
+                        "accountId": getattr(issue.fields.assignee, 'accountId', '')
                     }
                 
                 # Add priority if present
@@ -286,9 +301,9 @@ class JiraClient:
             # Add assignee if present
             if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
                 issue_data["fields"]["assignee"] = {
-                    "displayName": issue.fields.assignee.displayName,
+                    "displayName": getattr(issue.fields.assignee, 'displayName', ''),
                     "emailAddress": getattr(issue.fields.assignee, 'emailAddress', ''),
-                    "accountId": issue.fields.assignee.accountId
+                    "accountId": getattr(issue.fields.assignee, 'accountId', '')
                 }
             
             # Add priority if present
@@ -434,8 +449,8 @@ class JiraClient:
                 "id": comment_obj.id,
                 "body": comment_obj.body,
                 "author": {
-                    "displayName": comment_obj.author.displayName,
-                    "accountId": comment_obj.author.accountId
+                    "displayName": getattr(comment_obj.author, 'displayName', ''),
+                    "accountId": getattr(comment_obj.author, 'accountId', '')
                 },
                 "created": comment_obj.created,
                 "success": True
