@@ -425,6 +425,10 @@ class JiraClient:
             # Special handling for description field with ADF content
             # Use direct REST API call for ADF content to ensure proper handling
             if 'description' in fields and isinstance(fields['description'], dict):
+                # Ensure we have valid credentials for REST API call
+                if not self.email or not self.api_token:
+                    return {"error": "Missing email or API token for REST API call"}
+                
                 # Use direct REST API for ADF content
                 import requests
                 from requests.auth import HTTPBasicAuth
@@ -475,12 +479,13 @@ class JiraClient:
                     
                     logger.error(error_msg)
                     return {"error": error_msg}
-            # For custom fields and non-ADF content, use the standard JIRA library method
-            issue = self.jira.issue(issue_key)
-            issue.update(fields=fields)
-            
-            logger.info(f"Successfully updated issue: {issue_key}")
-            return {"success": True}
+            else:
+                # For custom fields and non-ADF content, use the standard JIRA library method
+                issue = self.jira.issue(issue_key)
+                issue.update(fields=fields)
+                
+                logger.info(f"Successfully updated issue: {issue_key}")
+                return {"success": True}
             
         except JIRAError as e:
             logger.error(f"JIRA update issue error for {issue_key}: {e}")

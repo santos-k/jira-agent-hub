@@ -645,44 +645,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update modal content
     document.getElementById('updateTicketKey').textContent = ticketKey;
     document.getElementById('updateTicketSummary').textContent = ticketSummary;
-  }
-
-  function attachUpdateConfirmHandler() {
-    const confirmButton = document.getElementById('confirmUpdateTicket');
-    if (confirmButton) {
-      confirmButton.addEventListener('click', function() {
-        performTicketUpdate();
-      });
-    }
-  }
-
-  function resetUpdateModal() {
-    // Hide the preview section
-    const previewSection = document.getElementById('testPlanPreview');
-    if (previewSection) {
-      previewSection.style.display = 'none';
-    }
     
-    // Reset button state
-    const confirmButton = document.getElementById('confirmUpdateTicket');
-    if (confirmButton) {
-      confirmButton.disabled = false;
-      const icon = confirmButton.querySelector('i');
-      const text = confirmButton.querySelector('.update-btn-text');
-      if (icon) icon.className = 'bi bi-upload';
-      if (text) text.textContent = 'Update Test Plan';
-      
-      // Remove any stored data
-      delete confirmButton.dataset.updatedContent;
-    }
+    // Automatically load the preview content when modal opens
+    loadTestPlanPreviewOnOpen();
   }
 
-  function performTicketUpdate() {
+  function loadTestPlanPreviewOnOpen() {
     const confirmButton = document.getElementById('confirmUpdateTicket');
     const buttonText = confirmButton.querySelector('.update-btn-text');
     const buttonIcon = confirmButton.querySelector('i');
     
-    // Disable button and show loading state
+    // Show loading state
     confirmButton.disabled = true;
     if (buttonIcon) buttonIcon.className = 'bi bi-hourglass-split spinner';
     if (buttonText) buttonText.textContent = 'Loading Preview...';
@@ -704,22 +677,118 @@ document.addEventListener('DOMContentLoaded', function () {
       if (buttonText) buttonText.textContent = 'Confirm Update';
       
       if (response.ok && data.success && data.preview) {
-        // Show preview in the existing modal
+        // Show preview in the existing modal immediately
         showTestPlanPreviewInModal(data.current_content, data.updated_content);
+        // Set up the confirm button to directly update
+        setupDirectConfirmation(data.updated_content);
       } else {
         // Show error message using existing alert system
         const errorMsg = data.error || 'Failed to prepare ticket update. Please try again.';
         showAlert(errorMsg, 'danger');
+        
+        // Reset button text for retry and set up retry handler
+        if (buttonText) buttonText.textContent = 'Retry Loading';
+        setupDirectConfirmation(null); // null indicates retry mode
       }
     })
     .catch(error => {
       // Re-enable button
       confirmButton.disabled = false;
-      if (buttonIcon) buttonIcon.className = 'bi bi-upload';
-      if (buttonText) buttonText.textContent = 'Update Ticket';
+      if (buttonIcon) buttonIcon.className = 'bi bi-exclamation-triangle';
+      if (buttonText) buttonText.textContent = 'Retry Loading';
       
-      console.error('Update ticket error:', error);
-      showAlert('Network error occurred while preparing ticket update. Please try again.', 'danger');
+      console.error('Load preview error:', error);
+      showAlert('Network error occurred while loading preview. Please try again.', 'danger');
+      
+      // Set up retry handler
+      setupDirectConfirmation(null); // null indicates retry mode
+    });
+  }
+
+  function resetUpdateModal() {
+    // Hide the preview section
+    const previewSection = document.getElementById('testPlanPreview');
+    if (previewSection) {
+      previewSection.style.display = 'none';
+    }
+    
+    // Reset button state
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    if (confirmButton) {
+      confirmButton.disabled = false;
+      const icon = confirmButton.querySelector('i');
+      const text = confirmButton.querySelector('.update-btn-text');
+      if (icon) icon.className = 'bi bi-check-circle';
+      if (text) text.textContent = 'Confirm Update';
+      
+      // Remove any stored data
+      delete confirmButton.dataset.updatedContent;
+    }
+  }
+
+  function attachUpdateConfirmHandler() {
+    // This function is now simplified since the confirm button will be set up
+    // automatically after the preview loads in loadTestPlanPreviewOnOpen
+    console.log('Update confirm handler attached - button will be configured after preview loads');
+  }
+
+  function setupDirectConfirmation(updatedContent) {
+    const confirmButton = document.getElementById('confirmUpdateTicket');
+    if (!confirmButton) return;
+    
+    // Remove existing event listeners by cloning the button
+    const newButton = confirmButton.cloneNode(true);
+    confirmButton.parentNode.replaceChild(newButton, confirmButton);
+    
+    // Add new event listener for direct confirmation
+    newButton.addEventListener('click', function() {
+      // Check if this is a retry case (no updated content)
+      if (!updatedContent) {
+        // If no content, this is a retry - reload the preview
+        loadTestPlanPreviewOnOpen();
+        return;
+      }
+
+      this.disabled = true;
+      const icon = this.querySelector('i');
+      const text = this.querySelector('.update-btn-text');
+      if (icon) icon.className = 'bi bi-hourglass-split spinner';
+      if (text) text.textContent = 'Updating...';
+      
+      fetch('/api/confirm_update_ticket_with_scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ updated_content: updatedContent })
+      })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        
+        this.disabled = false;
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Confirm Update';
+        
+        if (!res.ok || !data.success) {
+          showAlert(data.error || 'Failed to update Test Plan.', 'danger');
+          return;
+        }
+        
+        hideModernModal(); // Close the modal
+        showAlert(data.message || 'Test Plan updated successfully!', 'success');
+        
+        // Refresh the page to show updated content
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      })
+      .catch(err => {
+        this.disabled = false;
+        if (icon) icon.className = 'bi bi-check-circle';
+        if (text) text.textContent = 'Confirm Update';
+        showAlert('Network error: ' + err.message, 'danger');
+      });
     });
   }
 
