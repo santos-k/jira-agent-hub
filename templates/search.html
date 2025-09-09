@@ -49,9 +49,11 @@
             <div class="table-header">
               <div class="header-cell select-col">Select</div>
               <div class="header-cell ticket-col sortable" data-column="key">Ticket ID <span class="sort-icon"></span></div>
+              <div class="header-cell issuetype-col sortable" data-column="issue_type">Issue Type <span class="sort-icon"></span></div>
               <div class="header-cell summary-col sortable" data-column="summary">Summary <span class="sort-icon"></span></div>
               <div class="header-cell assignee-col sortable" data-column="assignee">Assignee <span class="sort-icon"></span></div>
               <div class="header-cell status-col sortable" data-column="status">Status <span class="sort-icon"></span></div>
+              <div class="header-cell updated-col sortable" data-column="updated">Last Updated <span class="sort-icon"></span></div>
             </div>
             <div class="table-body">
               {% set selected = session.get('selected_ticket') %}
@@ -63,12 +65,18 @@
                 <div class="table-cell ticket-col">
                   <a href="{{ r.url }}" target="_blank" class="fw-semibold">{{ r.key }}</a>
                 </div>
+                <div class="table-cell issuetype-col">
+                  <span class="badge bg-{% if r.issue_type == 'Story' %}primary{% elif r.issue_type == 'Bug' %}danger{% elif r.issue_type == 'Defect' %}warning{% else %}secondary{% endif %}">{{ r.issue_type }}</span>
+                </div>
                 <div class="table-cell summary-col">{{ r.summary }}</div>
                 <div class="table-cell assignee-col">
                   <span class="badge bg-secondary">{{ r.assignee }}</span>
                 </div>
                 <div class="table-cell status-col">
                   <span class="badge bg-{% if r.status in ['Done', 'Closed'] %}success{% elif r.status in ['In Progress'] %}warning{% else %}info{% endif %}">{{ r.status }}</span>
+                </div>
+                <div class="table-cell updated-col">
+                  <small class="text-muted utc-timestamp" data-timestamp="{{ r.updated }}">{{ r.updated }}</small>
                 </div>
               </div>
               {% endfor %}

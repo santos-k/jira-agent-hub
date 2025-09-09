@@ -181,9 +181,11 @@ def search():
     query = request.form.get("query", "").strip()
     logger.debug("Search requested: %s", query)
     if not query:
-        # If query is empty, fetch all tickets assigned to current user
-        jql = "assignee = currentUser()"
+        # If query is empty, fetch all tickets assigned to current user with allowed issue types
+        jql = "assignee = currentUser() AND issuetype in (Story, Defect, Bug)"
+        max_results = 200  # Increase limit for assigned issues to get all results
     else:
+        max_results = 50  # Keep original limit for specific searches
         # Detect whether input is a list of keys or a JQL
         # Simple heuristic: commas or single tokens that look like KEY-123 -> treat as keys
         q = query
@@ -192,24 +194,24 @@ def search():
         if "," in q:
             keys = [k.strip().upper() for k in q.split(",") if k.strip()]
             if keys and all(" " not in k for k in keys):
-                jql = f"issuekey in ({', '.join(keys)})"
+                jql = f"issuekey in ({', '.join(keys)}) AND issuetype in (Story, Defect, Bug)"
             else:
-                jql = q
+                jql = f"({q}) AND issuetype in (Story, Defect, Bug)"
         else:
             # single token - detect single issue key pattern like ABC-123 (case-insensitive)
             single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
             if single_key_match:
                 key = single_key_match.group(1).upper()
-                jql = f"issuekey = {key}"
+                jql = f"issuekey = {key} AND issuetype in (Story, Defect, Bug)"
             else:
-                # treat as JQL directly
-                jql = q
+                # treat as JQL directly but add issue type filter
+                jql = f"({q}) AND issuetype in (Story, Defect, Bug)"
 
     jira_url = session.get("jira_url")
     email = session.get("jira_email")
     api_token = session.get("jira_api_token")
 
-    resp = search_issues(jira_url, email, api_token, jql)
+    resp = search_issues(jira_url, email, api_token, jql, max_results)
     if isinstance(resp, dict) and resp.get("error"):
         logger.error("Search error: %s", resp.get("error"))
         flash(str(resp.get("error", "Unknown error")), "danger")
@@ -217,20 +219,65 @@ def search():
 
     issues = resp.get("issues", [])
     results = []
+    # Since we're filtering in JQL now, we may not need to filter again, but keep it for safety
+    allowed_issue_types = {"Story", "Defect", "Bug"}
+    
     for issue in issues:
         fields = issue.get("fields", {})
+        
+        # Get issue type and check if it's allowed
+        issuetype = fields.get("issuetype", {})
+        issue_type_name = issuetype.get("name", "")
+        
+        # Skip issues that are not Story, Defect, or Bug (backup filter)
+        if issue_type_name not in allowed_issue_types:
+            continue
+            
         assignee = fields.get("assignee")
         assignee_name = assignee.get("displayName") if assignee else "Unassigned"
         status = fields.get("status")
         status_name = status.get("name") if status else ""
         key = issue.get("key")
         summary = fields.get("summary") or ""
+        updated = fields.get("updated") or ""
+        
+        # Format the updated date to be more readable
+        updated_display = ""
+        if updated:
+            try:
+                from datetime import datetime
+                logger.debug(f"Processing updated field for {key}: {updated}")
+                
+                # Handle different date formats from Jira
+                if updated.endswith('Z'):
+                    # Remove Z and add timezone
+                    updated = updated[:-1] + '+00:00'
+                elif '+' in updated and updated.count(':') >= 2:
+                    # Handle format like 2024-01-15T10:30:00.000+0000
+                    if updated.endswith('00') and updated[-5] != ':':
+                        updated = updated[:-2] + ':' + updated[-2:]
+                
+                # Parse the datetime and keep as ISO format for client-side conversion
+                dt = datetime.fromisoformat(updated.replace('Z', '+00:00'))
+                # Send ISO timestamp to frontend for client-side timezone conversion
+                updated_display = dt.isoformat()
+                logger.debug(f"Sending ISO timestamp for {key}: {updated_display}")
+            except Exception as e:
+                logger.warning(f"Failed to parse updated date '{updated}' for {key}: {e}")
+                # Fallback: try to extract just the date part
+                if len(updated) >= 10:
+                    updated_display = updated[:10]  # Get YYYY-MM-DD part
+                else:
+                    updated_display = updated
+        
         ticket_url = f"{jira_url}/browse/{key}"
         results.append({
             "key": key,
             "summary": summary,
             "assignee": assignee_name,
             "status": status_name,
+            "issue_type": issue_type_name,
+            "updated": updated_display,
             "url": ticket_url,
         })
 
@@ -311,47 +358,97 @@ def refresh():
         logger.warning("Refresh attempted without Jira connection")
         return jsonify({'success': False, 'message': 'Not connected to Jira.'}), 403
     last_query = session.get('last_query', '').strip()
+    
+    # Re-run search logic with same logic as search endpoint
     if not last_query:
-        logger.warning("Refresh called with no previous query")
-        return jsonify({'success': False, 'message': 'No previous search found.'}), 400
-    # Re-run search logic
-    q = last_query
-    if "," in q:
-        keys = [k.strip().upper() for k in q.split(",") if k.strip()]
-        if keys and all(" " not in k for k in keys):
-            jql = f"issuekey in ({', '.join(keys)})"
-        else:
-            jql = q
+        # If query is empty, fetch all tickets assigned to current user with allowed issue types
+        jql = "assignee = currentUser() AND issuetype in (Story, Defect, Bug)"
+        max_results = 200  # Increase limit for assigned issues to get all results
     else:
-        single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
-        if single_key_match:
-            key = single_key_match.group(1).upper()
-            jql = f"issuekey = {key}"
+        max_results = 50  # Keep original limit for specific searches
+        q = last_query
+        if "," in q:
+            keys = [k.strip().upper() for k in q.split(",") if k.strip()]
+            if keys and all(" " not in k for k in keys):
+                jql = f"issuekey in ({', '.join(keys)}) AND issuetype in (Story, Defect, Bug)"
+            else:
+                jql = f"({q}) AND issuetype in (Story, Defect, Bug)"
         else:
-            jql = q
+            single_key_match = re.match(r"^([A-Za-z0-9]+-\d+)$", q.strip())
+            if single_key_match:
+                key = single_key_match.group(1).upper()
+                jql = f"issuekey = {key} AND issuetype in (Story, Defect, Bug)"
+            else:
+                jql = f"({q}) AND issuetype in (Story, Defect, Bug)"
+                
     jira_url = session.get("jira_url")
     email = session.get("jira_email")
     api_token = session.get("jira_api_token")
-    resp = search_issues(jira_url, email, api_token, jql)
+    resp = search_issues(jira_url, email, api_token, jql, max_results)
     if isinstance(resp, dict) and resp.get("error"):
         logger.error("Refresh search error: %s", resp.get("error"))
         return jsonify({'success': False, 'message': resp.get('error')}), 500
     issues = resp.get("issues", [])
     results = []
+    # Since we're filtering in JQL now, we may not need to filter again, but keep it for safety
+    allowed_issue_types = {"Story", "Defect", "Bug"}
+    
     for issue in issues:
         fields = issue.get("fields", {})
+        
+        # Get issue type and check if it's allowed
+        issuetype = fields.get("issuetype", {})
+        issue_type_name = issuetype.get("name", "")
+        
+        # Skip issues that are not Story, Defect, or Bug (backup filter)
+        if issue_type_name not in allowed_issue_types:
+            continue
+            
         assignee = fields.get("assignee")
         assignee_name = assignee.get("displayName") if assignee else "Unassigned"
         status = fields.get("status")
         status_name = status.get("name") if status else ""
         key = issue.get("key")
         summary = fields.get("summary") or ""
+        updated = fields.get("updated") or ""
+        
+        # Format the updated date to be more readable
+        updated_display = ""
+        if updated:
+            try:
+                from datetime import datetime
+                logger.debug(f"Processing updated field for {key}: {updated}")
+                
+                # Handle different date formats from Jira
+                if updated.endswith('Z'):
+                    # Remove Z and add timezone
+                    updated = updated[:-1] + '+00:00'
+                elif '+' in updated and updated.count(':') >= 2:
+                    # Handle format like 2024-01-15T10:30:00.000+0000
+                    if updated.endswith('00') and updated[-5] != ':':
+                        updated = updated[:-2] + ':' + updated[-2:]
+                
+                # Parse the datetime and keep as ISO format for client-side conversion
+                dt = datetime.fromisoformat(updated.replace('Z', '+00:00'))
+                # Send ISO timestamp to frontend for client-side timezone conversion
+                updated_display = dt.isoformat()
+                logger.debug(f"Sending ISO timestamp for {key}: {updated_display}")
+            except Exception as e:
+                logger.warning(f"Failed to parse updated date '{updated}' for {key}: {e}")
+                # Fallback: try to extract just the date part
+                if len(updated) >= 10:
+                    updated_display = updated[:10]  # Get YYYY-MM-DD part
+                else:
+                    updated_display = updated
+        
         ticket_url = f"{jira_url}/browse/{key}"
         results.append({
             "key": key,
             "summary": summary,
             "assignee": assignee_name,
             "status": status_name,
+            "issue_type": issue_type_name,
+            "updated": updated_display,
             "url": ticket_url,
         })
     session["search_results"] = results

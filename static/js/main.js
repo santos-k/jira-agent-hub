@@ -980,10 +980,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Get the column index mapping
     const columnMap = {
-      'key': 1,      // Ticket ID
-      'summary': 2,  // Summary
-      'assignee': 3, // Assignee
-      'status': 4    // Status
+      'key': 1,         // Ticket ID
+      'issue_type': 2,  // Issue Type
+      'summary': 3,     // Summary
+      'assignee': 4,    // Assignee
+      'status': 5,      // Status
+      'updated': 6      // Last Updated
     };
     
     const colIdx = columnMap[column];
@@ -1074,12 +1076,17 @@ document.addEventListener('DOMContentLoaded', function () {
               const selected = data.selected && data.selected.key === r.key;
               const statusClass = r.status === 'Done' || r.status === 'Closed' ? 'success' : 
                                  r.status === 'In Progress' ? 'warning' : 'info';
+              const issueTypeClass = r.issue_type === 'Story' ? 'primary' : 
+                                    r.issue_type === 'Bug' ? 'danger' : 
+                                    r.issue_type === 'Defect' ? 'warning' : 'secondary';
               tableBody.innerHTML += `<div class="table-row" data-key="${r.key}">
                 <div class="table-cell select-col"><input type="radio" name="selected_ticket" value="${r.key}" data-url="${r.url}" data-summary="${r.summary.replace(/"/g, '&quot;')}"${selected ? ' checked' : ''} class="form-check-input"></div>
                 <div class="table-cell ticket-col"><a href="${r.url}" target="_blank" class="fw-semibold">${r.key}</a></div>
+                <div class="table-cell issuetype-col"><span class="badge bg-${issueTypeClass}">${r.issue_type}</span></div>
                 <div class="table-cell summary-col">${r.summary}</div>
                 <div class="table-cell assignee-col"><span class="badge bg-secondary">${r.assignee}</span></div>
                 <div class="table-cell status-col"><span class="badge bg-${statusClass}">${r.status}</span></div>
+                <div class="table-cell updated-col"><small class="text-muted utc-timestamp" data-timestamp="${r.updated || ''}">${r.updated || ''}</small></div>
               </div>`;
             });
           }
@@ -1094,6 +1101,8 @@ document.addEventListener('DOMContentLoaded', function () {
         attachSelectionHandlers();
         // Check if table needs scrolling
         checkTableScrolling();
+        // Convert timestamps to local time
+        convertTimestampsToLocalTime();
       })
       .catch(err => {
         refreshBtn.disabled = false;
@@ -1135,4 +1144,54 @@ document.addEventListener('DOMContentLoaded', function () {
   attachTableSortHandlers();
   autoDismissAlerts();
   checkTableScrolling(); // Check if table needs scrolling on page load
+  
+  // Convert UTC timestamps to user's local timezone
+  convertTimestampsToLocalTime();
 });
+
+// Function to convert UTC timestamps to user's local timezone
+function convertTimestampsToLocalTime() {
+  const timestampElements = document.querySelectorAll('.utc-timestamp[data-timestamp]');
+  
+  timestampElements.forEach(element => {
+    const isoTimestamp = element.getAttribute('data-timestamp');
+    if (!isoTimestamp || isoTimestamp === '') {
+      element.textContent = '';
+      return;
+    }
+    
+    try {
+      // Parse the ISO timestamp
+      const date = new Date(isoTimestamp);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp:', isoTimestamp);
+        element.textContent = isoTimestamp;
+        return;
+      }
+      
+      // Format to user's local timezone without timezone abbreviation
+      const options = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false, // Use 24-hour format
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+      
+      // Get the formatted string without timezone
+      const localTimeString = date.toLocaleString('en-US', options);
+      
+      // Update the element with local time (date and time only)
+      element.textContent = localTimeString;
+      element.title = `Original UTC: ${isoTimestamp}`; // Show original UTC time on hover
+      
+    } catch (error) {
+      console.error('Error converting timestamp:', isoTimestamp, error);
+      element.textContent = isoTimestamp; // Fallback to original
+    }
+  });
+}

@@ -231,7 +231,7 @@ body {
 
 .table-header {
   display: grid;
-  grid-template-columns: 80px 140px 1fr 140px 120px;
+  grid-template-columns: 80px 140px 100px 1fr 140px 120px 160px;
   background: var(--primary-gradient) !important;
   color: white !important;
   font-weight: 600;
@@ -258,7 +258,8 @@ body {
 }
 
 .header-cell.select-col,
-.header-cell.status-col {
+.header-cell.status-col,
+.header-cell.issuetype-col {
   justify-content: center;
 }
 
@@ -300,7 +301,7 @@ body {
 
 .table-row {
   display: grid;
-  grid-template-columns: 80px 140px 1fr 140px 120px;
+  grid-template-columns: 80px 140px 100px 1fr 140px 120px 160px;
   padding: 0;
   border-bottom: 1px solid var(--border-color);
   transition: var(--transition-fast);
@@ -343,7 +344,9 @@ body {
 }
 
 .table-cell.select-col,
-.table-cell.status-col {
+.table-cell.status-col,
+.table-cell.issuetype-col,
+.table-cell.updated-col {
   justify-content: center;
 }
 
@@ -351,6 +354,11 @@ body {
   white-space: normal;
   word-wrap: break-word;
   line-height: 1.4;
+}
+
+.table-cell.updated-col {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .table-cell a {
@@ -671,7 +679,7 @@ body {
 @media (max-width: 768px) {
   .table-header,
   .table-row {
-    grid-template-columns: 60px 100px 1fr 100px 80px;
+    grid-template-columns: 60px 100px 80px 1fr 100px 80px 140px;
   }
   
   .header-cell,
@@ -688,13 +696,15 @@ body {
 @media (max-width: 576px) {
   .table-header,
   .table-row {
-    grid-template-columns: 50px 80px 1fr;
+    grid-template-columns: 50px 80px 80px 1fr;
   }
   
   .header-cell.assignee-col,
   .header-cell.status-col,
+  .header-cell.updated-col,
   .table-cell.assignee-col,
-  .table-cell.status-col {
+  .table-cell.status-col,
+  .table-cell.updated-col {
     display: none;
   }
   

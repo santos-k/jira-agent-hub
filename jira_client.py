@@ -215,7 +215,8 @@ class JiraClient:
                         "priority": None,
                         "issuetype": {
                             "name": issue.fields.issuetype.name
-                        }
+                        },
+                        "updated": getattr(issue.fields, 'updated', '')
                     }
                 }
                 
@@ -294,7 +295,8 @@ class JiraClient:
                     "project": {
                         "key": issue.fields.project.key,
                         "name": issue.fields.project.name
-                    }
+                    },
+                    "updated": getattr(issue.fields, 'updated', '')
                 }
             }
             
