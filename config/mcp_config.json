@@ -1,9 +1,0 @@
-{
-    "mcp_enabled": false,
-    "mcp_server_url": "https://mcp.atlassian.com",
-    "use_remote_mcp": true,
-    "local_mcp_url": "http://localhost:8080",
-    "mcp_ai_enabled": true,
-    "mcp_ai_model": "default",
-    "mcp_ai_max_tokens": 1000
-}

@@ -1,11 +1,12 @@
 # jira-agent-hub
 
-Lightweight Flask web UI to connect to Jira (Atlassian Cloud) and search tickets, with integrated AI Chat assistance. Stores connection and search results in server-side session so results persist across navigation and refresh.
+Lightweight Flask web UI to connect to Jira (Atlassian Cloud) and search tickets, with integrated AI Chat assistance. Uses the official Python JIRA package for reliable and direct API communication. Stores connection and search results in server-side session so results persist across navigation and refresh.
 
 ## Features
 
 ### Core Features
 - Connect to Jira using Jira URL, Email/Username and API Token (modal in the navbar)
+- **Direct JIRA API Integration**: Uses the official Python JIRA package for reliable communication
 - Search tickets by single key (ABC-123), multiple comma-separated keys, or by JQL
 - Display results in a Bootstrap 5 table with ticket links that open in a new tab
 - Server-side session persistence of connection info and last search results using flask-session
@@ -58,6 +59,45 @@ Lightweight Flask web UI to connect to Jira (Atlassian Cloud) and search tickets
     - Send user message and get AI response
   - `POST /api/chat/regenerate`
     - Regenerate AI response for previous message
+
+## Technology Stack
+
+### Backend
+- **Python 3.8+** - Core runtime
+- **Flask 2.0+** - Web framework
+- **Flask-Session 0.4+** - Server-side session management
+- **Python JIRA 3.0+** - Official Atlassian JIRA API client
+- **Requests 2.25+** - HTTP client library
+
+### Frontend
+- **Bootstrap 5** - UI framework
+- **Vanilla JavaScript** - Client-side scripting
+- **HTML5/CSS3** - Markup and styling
+
+### AI Integration
+- **Google GenAI SDK (Gemini) 0.20.0+** - AI chat functionality
+
+### Session Storage
+- **Default**: Flask in-memory session (for development)
+- **Recommended**: Redis or other persistent session backend for production
+
+## Migration from MCP to Direct JIRA API
+
+This project has been migrated from using Atlassian's Model Context Protocol (MCP) to direct JIRA API integration using the official Python JIRA package. This provides:
+
+- **Better Reliability**: Direct API calls are more stable than MCP intermediary
+- **Enhanced Performance**: Reduced overhead from eliminating the MCP layer
+- **Simplified Architecture**: Fewer dependencies and cleaner codebase
+- **Official Support**: Using Atlassian's officially maintained Python package
+
+### What Changed
+- Replaced `mcp/` modules with `jira_client.py`
+- Updated `app.py` to use direct JIRA client instead of MCP calls
+- Added `jira>=3.0.0` dependency to `requirements.txt`
+- Removed MCP configuration and authentication layers
+
+### Backup Files
+Original MCP files are preserved as `.backup` files in the `mcp/` directory and can be restored if needed.
 
 ## Project setup
 
@@ -150,16 +190,17 @@ Note: FLASK_SECRET_KEY should be a random, strong string in production.
 
 ## Future Work
 - Backend integration for AI Chat feature
-- Create, update, add comments, and transition tickets via the Jira API
-- Fetch tickets assigned to the logged-in user
-- Improve authentication handling (token encryption / server-side vault)
+- **Enhanced JIRA Operations**: Create, update, add comments, and transition tickets via the JIRA API (now easier with direct API access)
+- **Advanced Search**: Fetch tickets assigned to the logged-in user with custom filters
+- **Improved Security**: Token encryption and server-side vault integration
 - Production-ready session store implementation
 - AI chat conversation history persistence
-- Enhanced AI capabilities:
-  - Ticket analysis and summarization
+- **Enhanced AI-JIRA Integration**:
+  - Ticket analysis and summarization using JIRA fields
   - JQL query generation assistance
   - Natural language ticket creation
-  - Context-aware responses based on Jira data
+  - Context-aware responses based on JIRA data
+  - Automated ticket updates based on AI recommendations
 
 ## Usage notes
 - Use an Atlassian Cloud API token for authentication (https://id.atlassian.com/manage-profile/security/api-tokens).

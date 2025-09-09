@@ -3,19 +3,15 @@ from flask_session import Session
 
 import requests
 import os
-from requests.auth import HTTPBasicAuth
 import re
 import time
 import json
 import logger as logutil
 from ai.google_ai import GoogleAIChat
-from ai.mcp_ai import MCPAIChat
 import logging as _logging
 logger = logutil.get_logger(__name__)
-# Import MCP modules
-from mcp.api import mcp_bp
-from mcp.config import mcp_config
-from mcp.auth import mcp_auth
+# Import new JIRA client
+from jira_client import JiraClient, get_jira_client
 
 # Configuration
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -27,10 +23,6 @@ Session(app)
 # Initialize logger
 logger = logutil.get_logger(__name__)
 ai_logger = _logging.getLogger('ai_chat')
-
-# Register MCP blueprint
-app.register_blueprint(mcp_bp)
-logger.info("MCP integration enabled")
 
 # Request/response logging: record start time and log after response
 @app.before_request
@@ -51,38 +43,57 @@ def _log_request_response(response):
 
 # Helpers
 @logutil.log_exceptions
-def jira_auth_headers(email, api_token):
-    auth = HTTPBasicAuth(email, api_token)
-    return auth
-
-@logutil.log_exceptions
 def validate_jira_connection(jira_url, email, api_token):
+    """
+    Validate Jira connection using the new JIRA client.
+    
+    Args:
+        jira_url: Jira server URL
+        email: User email
+        api_token: API token
+        
+    Returns:
+        User info dict if successful, None if failed
+    """
     try:
-        api = jira_url.rstrip("/") + "/rest/api/3/myself"
-        resp = requests.get(api, auth=jira_auth_headers(email, api_token), timeout=10)
-        if resp.status_code == 200:
+        client = JiraClient(jira_url, email, api_token)
+        user_data = client.validate_connection()
+        
+        if user_data:
             logger.info("Successfully validated Jira connection for %s", email)
-            return resp.json()
+            return user_data
         else:
-            logger.warning("Jira validation failed with status %s: %s", resp.status_code, resp.text)
+            logger.warning("Jira validation failed for %s", email)
             return None
-    except Exception:
-        logger.exception("Exception validating Jira connection to %s", jira_url)
+    except Exception as e:
+        logger.exception("Exception validating Jira connection to %s: %s", jira_url, str(e))
         return None
 
 @logutil.log_exceptions
 def search_issues(jira_url, email, api_token, jql, max_results=50):
+    """
+    Search issues using the new JIRA client.
+    
+    Args:
+        jira_url: Jira server URL
+        email: User email
+        api_token: API token
+        jql: JQL query string
+        max_results: Maximum results to return
+        
+    Returns:
+        Search results dict
+    """
     try:
-        api = jira_url.rstrip("/") + "/rest/api/3/search"
-        params = {"jql": jql, "maxResults": max_results}
-        logger.debug("Searching Jira: %s params=%s", api, params)
-        resp = requests.get(api, params=params, auth=jira_auth_headers(email, api_token), timeout=20)
-        if resp.status_code == 200:
-            logger.info("Search successful for JQL: %s", jql)
-            return resp.json()
+        client = JiraClient(jira_url, email, api_token)
+        results = client.search_issues(jql, max_results)
+        
+        if "error" in results:
+            logger.error("Search error: %s", results["error"])
         else:
-            logger.error("Jira API returned %s: %s", resp.status_code, resp.text)
-            return {"error": f"Jira API returned {resp.status_code}: {resp.text}"}
+            logger.info("Search successful for JQL: %s", jql)
+            
+        return results
     except Exception as e:
         logger.exception("Exception during search_issues for JQL: %s", jql)
         return {"error": str(e)}
@@ -136,6 +147,7 @@ def connect():
 
     # Save connection in session (server-side via flask-session)
     session["jira_connected"] = True
+    session["jira_authenticated"] = True  # Add this for compatibility
     session["jira_url"] = jira_url.rstrip("/")
     session["jira_email"] = email
     session["jira_api_token"] = api_token
@@ -153,10 +165,8 @@ def connect():
 @app.route("/logout", methods=["POST"])
 def logout():
     # Clear connection-related session data
-    keys = ["jira_connected", "jira_url", "jira_email", "jira_api_token", "user_full_name", "user_email", "user_initials", "search_results", "last_query", "selected_ticket"]
+    keys = ["jira_connected", "jira_authenticated", "jira_url", "jira_email", "jira_api_token", "user_full_name", "user_email", "user_initials", "search_results", "last_query", "selected_ticket"]
     
-    # Clear MCP session data
-    mcp_auth.clear_auth()
     for k in keys:
         session.pop(k, None)
     logger.info("User logged out and session cleared")
@@ -202,7 +212,7 @@ def search():
     resp = search_issues(jira_url, email, api_token, jql)
     if isinstance(resp, dict) and resp.get("error"):
         logger.error("Search error: %s", resp.get("error"))
-        flash(resp.get("error"), "danger")
+        flash(str(resp.get("error", "Unknown error")), "danger")
         return redirect(url_for("index"))
 
     issues = resp.get("issues", [])
@@ -251,12 +261,12 @@ def select_ticket():
         email = session.get('jira_email')
         api_token = session.get('jira_api_token')
         if jira_url and email and api_token:
-            issue_api = f"{jira_url}/rest/api/3/issue/{key}?expand=renderedFields"
-            logger.debug("Fetching issue %s from %s", key, issue_api)
-            r = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
-            if r.status_code == 200:
-                issue_data = r.json()
-                # Get plain text (ADF) for fallback
+            logger.debug("Fetching issue %s using JIRA client", key)
+            client = JiraClient(jira_url, email, api_token)
+            issue_data = client.get_issue(key, expand="description,renderedFields")
+            
+            if "error" not in issue_data:
+                # Get plain text description
                 desc = issue_data.get('fields', {}).get('description')
                 if isinstance(desc, str):
                     description_text = desc
@@ -267,7 +277,7 @@ def select_ticket():
                 if rendered_desc:
                     description_html = rendered_desc
             else:
-                logger.warning("Failed to fetch issue %s: %s", key, r.status_code)
+                logger.warning("Failed to fetch issue %s: %s", key, issue_data.get('error'))
                 description_text = ''
                 description_html = ''
     except Exception:
@@ -355,11 +365,11 @@ def refresh():
         description_text = ''
         description_html = ''
         try:
-            issue_api = f"{jira_url}/rest/api/3/issue/{key}?expand=renderedFields"
-            logger.debug("Refreshing issue %s from %s", key, issue_api)
-            r = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
-            if r.status_code == 200:
-                issue_data = r.json()
+            logger.debug("Refreshing issue %s using JIRA client", key)
+            client = JiraClient(jira_url, email, api_token)
+            issue_data = client.get_issue(key, expand="description,renderedFields")
+            
+            if "error" not in issue_data:
                 desc = issue_data.get('fields', {}).get('description')
                 if isinstance(desc, str):
                     description_text = desc
@@ -369,7 +379,7 @@ def refresh():
                 if rendered_desc:
                     description_html = rendered_desc
             else:
-                logger.warning("Failed to refresh issue %s: %s", key, r.status_code)
+                logger.warning("Failed to refresh issue %s: %s", key, issue_data.get('error'))
                 description_text = ''
                 description_html = ''
         except Exception:
@@ -544,10 +554,8 @@ def manual_prompt_scenarios():
             logger.error('Manual prompt error: No selected ticket in session')
             return jsonify({'error': 'No selected ticket. Please select a ticket first.'}), 400
         if not api_key:
-            # Check if MCP is enabled and can be used as fallback
-            if not session.get("mcp_enabled"):
-                logger.error('Manual prompt error: No AI API key in session and MCP not available')
-                return jsonify({'error': 'AI API key missing.'}), 403
+            logger.error('Manual prompt error: No AI API key in session')
+            return jsonify({'error': 'AI API key missing.'}), 403
         if not description:
             logger.error('Manual prompt error: No description provided')
             return jsonify({'error': 'Description is required.'}), 400
@@ -578,7 +586,8 @@ def manual_prompt_scenarios():
         session['selected_ticket'] = selected
         # Return new scenarios and last history item
         last_history = history[-1] if history else None
-        logger.info(f"Manual prompt success: {len(scenarios)} scenarios generated.")
+        scenario_count = len(scenarios) if scenarios else 0
+        logger.info(f"Manual prompt success: {scenario_count} scenarios generated.")
         return jsonify({'scenarios': scenarios, 'history': last_history}), 200
     except Exception as e:
         logger.error(f"Manual prompt error: {e}")
@@ -656,7 +665,8 @@ def text_to_adf(text):
 
 @logutil.log_exceptions
 def update_jira_issue_description(issue_key, new_description):
-    """Update a Jira issue's description using the Jira REST API.
+    """
+    Update a Jira issue's description using the JIRA client.
     
     Args:
         issue_key: The Jira issue key (e.g., PROJECT-123)
@@ -666,59 +676,22 @@ def update_jira_issue_description(issue_key, new_description):
         Tuple: (success: bool, error_message: str or None)
     """
     try:
-        jira_url = session.get('jira_url')
-        email = session.get('jira_email')
-        api_token = session.get('jira_api_token')
+        client = get_jira_client()
         
-        if not all([jira_url, email, api_token]):
+        if not client.is_authenticated():
             return False, 'Jira connection not available.'
         
-        # Jira REST API endpoint for updating issue
-        api_endpoint = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
+        # Update the issue description
+        result = client.update_issue(issue_key, description=new_description)
         
-        # Prepare the update payload
-        payload = {
-            "fields": {
-                "description": new_description
-            }
-        }
-        
-        # Make the API request
-        response = requests.put(
-            api_endpoint,
-            json=payload,
-            auth=jira_auth_headers(email, api_token),
-            headers={'Content-Type': 'application/json'},
-            timeout=30
-        )
-        
-        if response.status_code == 204:  # Success - No Content
+        if result.get('success'):
             logger.info(f"Successfully updated issue {issue_key} description")
             return True, None
         else:
-            error_msg = f"Failed to update issue {issue_key}: HTTP {response.status_code}"
-            if response.text:
-                try:
-                    error_data = response.json()
-                    if 'errors' in error_data:
-                        error_details = ', '.join([f"{k}: {v}" for k, v in error_data['errors'].items()])
-                        error_msg += f" - {error_details}"
-                    elif 'errorMessages' in error_data:
-                        error_msg += f" - {', '.join(error_data['errorMessages'])}"
-                except:
-                    error_msg += f" - {response.text[:200]}"
-            
+            error_msg = result.get('error', f'Failed to update issue {issue_key}')
             logger.error(error_msg)
             return False, error_msg
             
-    except requests.exceptions.Timeout:
-        error_msg = 'Request timed out while updating Jira issue.'
-        logger.error(error_msg)
-        return False, error_msg
-    except requests.exceptions.RequestException as e:
-        error_msg = f'Network error while updating Jira issue: {str(e)}'
-        logger.error(error_msg)
-        return False, error_msg
     except Exception as e:
         error_msg = f'Unexpected error while updating Jira issue: {str(e)}'
         logger.exception(error_msg)
@@ -747,19 +720,19 @@ def update_ticket_with_scenarios():
         issue_key = selected['key']
         
         # Fetch current issue description from Jira
-        jira_url = session.get('jira_url')
-        email = session.get('jira_email')
-        api_token = session.get('jira_api_token')
-        
         try:
-            issue_api = f"{jira_url}/rest/api/3/issue/{issue_key}"
-            response = requests.get(issue_api, auth=jira_auth_headers(email, api_token), timeout=10)
+            client = get_jira_client()
             
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch issue {issue_key}: HTTP {response.status_code}")
+            if not client.is_authenticated():
+                logger.error(f"Not authenticated with Jira for issue {issue_key}")
+                return jsonify({'success': False, 'error': 'Not authenticated with Jira.'}), 403
+            
+            issue_data = client.get_issue(issue_key)
+            
+            if "error" in issue_data:
+                logger.error(f"Failed to fetch issue {issue_key}: {issue_data['error']}")
                 return jsonify({'success': False, 'error': 'Failed to fetch current ticket information.'}), 500
             
-            issue_data = response.json()
             current_description = issue_data.get('fields', {}).get('description')
             
         except Exception as e:
@@ -787,30 +760,8 @@ def update_ticket_with_scenarios():
         # Convert to ADF format
         new_description_adf = text_to_adf(new_description_text)
         
-        # Try MCP first if available, then fallback to direct API
-        success = False
-        error_message = None
-        
-        # Try MCP update if available
-        if session.get("mcp_enabled"):
-            try:
-                from mcp.client import MCPClient
-                client = MCPClient()
-                result = client.update_issue(issue_key, description=new_description_adf)
-                
-                if result and not result.get('error'):
-                    success = True
-                    logger.info(f"Successfully updated issue {issue_key} via MCP")
-                else:
-                    error_message = result.get('error', 'MCP update failed')
-                    logger.warning(f"MCP update failed for {issue_key}: {error_message}")
-            except Exception as e:
-                error_message = f"MCP update error: {str(e)}"
-                logger.error(f"MCP update failed for {issue_key}: {str(e)}")
-        
-        # Fallback to direct Jira API if MCP failed or unavailable
-        if not success:
-            success, error_message = update_jira_issue_description(issue_key, new_description_adf)
+        # Update using JIRA client
+        success, error_message = update_jira_issue_description(issue_key, new_description_adf)
         
         if success:
             # Update the session with new description
@@ -855,29 +806,19 @@ def generate_scenarios_with_ai(description, prompt=None):
             f"\n\nStory:\n{description}\n\nTest Scenarios:"
         )
     
-    # Check if MCP is enabled and connected
-    if session.get("mcp_enabled"):
-        # Use MCP AI for test scenario generation
-        chat = MCPAIChat()
-        try:
-            resp = chat.send_message(full_prompt)
-            logger.info(f"MCP AI prompt executed: {prompt if prompt else 'default'}")
-        except Exception as e:
-            logger.error(f"MCP AI error: {e}")
-            return None, 'MCP AI error: ' + str(e)
-    else:
-        # Fall back to Google AI if MCP is not available
-        api_key = session.get('genai_api_key')
-        if not api_key:
-            logger.error('AI API key missing for scenario generation')
-            return None, 'AI API key missing.'
-        chat = GoogleAIChat(api_key)
-        try:
-            resp = chat.send_message(full_prompt)
-            logger.info(f"Google AI prompt executed: {prompt if prompt else 'default'}")
-        except Exception as e:
-            logger.error(f"Google AI error: {e}")
-            return None, 'AI error: ' + str(e)
+    # Use Google AI for test scenario generation
+    api_key = session.get('genai_api_key')
+    if not api_key:
+        logger.error('AI API key missing for scenario generation')
+        return None, 'AI API key missing.'
+        
+    chat = GoogleAIChat(api_key)
+    try:
+        resp = chat.send_message(full_prompt)
+        logger.info(f"Google AI prompt executed: {prompt if prompt else 'default'}")
+    except Exception as e:
+        logger.error(f"Google AI error: {e}")
+        return None, 'AI error: ' + str(e)
     scenarios = []
     if resp:
         for line in resp.splitlines():
