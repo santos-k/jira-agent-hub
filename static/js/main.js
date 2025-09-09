@@ -1032,6 +1032,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Sort rows
     rows.sort((a, b) => {
+      // Special handling for the updated column (date/time sorting)
+      if (column === 'updated') {
+        const aTimestamp = a.children[colIdx]?.querySelector('.utc-timestamp')?.getAttribute('data-timestamp') || '';
+        const bTimestamp = b.children[colIdx]?.querySelector('.utc-timestamp')?.getAttribute('data-timestamp') || '';
+        
+        // If both have timestamps, compare them as dates
+        if (aTimestamp && bTimestamp) {
+          const aDate = new Date(aTimestamp);
+          const bDate = new Date(bTimestamp);
+          
+          // Check if dates are valid
+          if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
+            return (aDate.getTime() - bDate.getTime()) * dirModifier;
+          }
+        }
+        
+        // Fallback to string comparison for invalid dates
+        const aText = aTimestamp || '';
+        const bText = bTimestamp || '';
+        if (aText < bText) return -1 * dirModifier;
+        if (aText > bText) return 1 * dirModifier;
+        return 0;
+      }
+      
+      // Default text-based sorting for other columns
       const aText = a.children[colIdx]?.textContent.trim().toLowerCase() || '';
       const bText = b.children[colIdx]?.textContent.trim().toLowerCase() || '';
       
@@ -1044,6 +1069,7 @@ document.addEventListener('DOMContentLoaded', function () {
           return (aNum - bNum) * dirModifier;
         }
       }
+      
       if (aText < bText) return -1 * dirModifier;
       if (aText > bText) return 1 * dirModifier;
       return 0;
@@ -1074,6 +1100,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('resultsTable');
     if (!table) return;
     let currentSort = { column: null, asc: true };
+    
+    // Check if there's a preserved sort state
+    if (window.tableSortState) {
+      currentSort = window.tableSortState;
+      // Apply the preserved sort immediately
+      if (currentSort.column) {
+        sortTableByColumn(table, currentSort.column, currentSort.asc);
+        updateSortIcons(table, currentSort.column, currentSort.asc);
+      }
+    }
+    
     table.querySelectorAll('.header-cell.sortable').forEach(header => {
       header.addEventListener('click', function () {
         const column = header.dataset.column;
@@ -1082,6 +1119,9 @@ document.addEventListener('DOMContentLoaded', function () {
         sortTableByColumn(table, column, asc);
         updateSortIcons(table, column, asc);
         currentSort = { column, asc };
+        
+        // Preserve sort state for refresh operations
+        window.tableSortState = currentSort;
       });
     });
   }
@@ -1138,6 +1178,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // Re-attach radio handlers
         attachSelectionHandlers();
+        // Re-attach table sort handlers to apply preserved sort state
+        attachTableSortHandlers();
         // Check if table needs scrolling
         checkTableScrolling();
         // Convert timestamps to local time
