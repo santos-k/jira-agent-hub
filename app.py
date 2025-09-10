@@ -1025,7 +1025,7 @@ def confirm_update_ticket_with_scenarios():
             
             if not client.is_authenticated():
                 logger.error(f"Not authenticated with Jira for issue {issue_key}")
-                return jsonify({'success': False, 'error': 'Not authenticated with Jira.'}), 403
+                return jsonify({'success': False, 'error': 'Authentication failed with Jira.'}), 403
             
             # Use JIRA library method to update the custom field
             result = client.update_issue(issue_key, **{"customfield_11334": updated_content})
@@ -1038,10 +1038,13 @@ def confirm_update_ticket_with_scenarios():
                 logger.info(f"Successfully updated Test Plan for issue {issue_key}")
                 return jsonify({
                     'success': True, 
-                    'message': f'Successfully updated Test Plan for {issue_key}.'
+                    'message': f'Test Plan updated for {issue_key}.'
                 }), 200
             else:
                 error_msg = result.get('error', 'Failed to update Test Plan.')
+                # Handle specific JIRA field error
+                if "Field 'customfield_11334' cannot be set" in error_msg:
+                    error_msg = "Test Plan field not available on this ticket type."
                 logger.error(f"Failed to update Test Plan for {issue_key}: {error_msg}")
                 return jsonify({
                     'success': False, 
@@ -1049,8 +1052,15 @@ def confirm_update_ticket_with_scenarios():
                 }), 500
                 
         except Exception as e:
-            logger.error(f"Error updating Test Plan for {issue_key}: {str(e)}")
-            return jsonify({'success': False, 'error': 'Failed to update Test Plan.'}), 500
+            error_msg = str(e)
+            # Handle specific JIRA field error
+            if "Field 'customfield_11334' cannot be set" in error_msg:
+                error_msg = "Test Plan field not available on this ticket type."
+                logger.error(f"Failed to update Test Plan for {issue_key}: {error_msg}")
+                return jsonify({'success': False, 'error': error_msg}), 500
+            else:
+                logger.error(f"Error updating Test Plan for {issue_key}: {error_msg}")
+                return jsonify({'success': False, 'error': 'Failed to update Test Plan.'}), 500
             
     except Exception as e:
         logger.exception(f"Unexpected error in confirm_update_ticket_with_scenarios: {str(e)}")

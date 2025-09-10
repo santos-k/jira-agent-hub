@@ -23,16 +23,84 @@ document.addEventListener('DOMContentLoaded', function () {
   const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
 
   function showAlert(message, type = 'danger') {
-    loginAlertPlaceholder.innerHTML = `\n      <div class="alert alert-${type} alert-dismissible fade show" role="alert">\n        ${message}\n        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>\n      </div>\n    `;
-    // Auto dismiss after 3 seconds
-    setTimeout(function() {
-      const alertDiv = loginAlertPlaceholder.querySelector('.alert');
-      if (alertDiv) {
-        // Use Bootstrap's built-in dismiss
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
-        bsAlert.close();
-      }
-    }, 3000);
+    // Check if this is for login (uses loginAlertPlaceholder) or general alerts (uses sticky alerts)
+    const loginAlertPlaceholder = document.getElementById('loginAlertPlaceholder');
+    if (loginAlertPlaceholder && loginAlertPlaceholder.innerHTML.includes(message)) {
+      // This is for login alerts
+      loginAlertPlaceholder.innerHTML = `\n      <div class="alert alert-${type} alert-dismissible fade show" role="alert">\n        ${message}\n        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>\n      </div>\n    `;
+      // Auto dismiss after 3 seconds
+      setTimeout(function() {
+        const alertDiv = loginAlertPlaceholder.querySelector('.alert');
+        if (alertDiv) {
+          // Use Bootstrap's built-in dismiss
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+          bsAlert.close();
+        }
+      }, 3000);
+    } else {
+      // This is for general alerts - use sticky alerts
+      showStickyAlert(message, type);
+    }
+  }
+
+  function showStickyAlert(message, type = 'danger') {
+    // Ensure message is concise and meaningful (single line, max 100 characters)
+    let conciseMessage = message;
+    
+    // Handle common error patterns and make them more user-friendly
+    if (conciseMessage.includes("Field 'customfield_11334' cannot be set")) {
+      conciseMessage = 'Test Plan field not available on this ticket type.';
+    } else if (conciseMessage.includes('Failed to fetch')) {
+      conciseMessage = 'Connection failed. Please check your network.';
+    } else if (conciseMessage.includes('Network error')) {
+      conciseMessage = 'Network issue. Please try again.';
+    } else if (conciseMessage.includes('Server error')) {
+      conciseMessage = 'Server issue. Please try again later.';
+    } else if (conciseMessage.includes('API key')) {
+      conciseMessage = 'API key issue. Please check your settings.';
+    } else if (conciseMessage.includes('Not connected to Jira')) {
+      conciseMessage = 'Jira connection required. Please connect first.';
+    } else if (conciseMessage.includes('No ticket selected')) {
+      conciseMessage = 'Please select a ticket first.';
+    } else if (conciseMessage.includes('No test scenarios')) {
+      conciseMessage = 'No scenarios to update. Generate some first.';
+    } else if (conciseMessage.includes('Update failed')) {
+      conciseMessage = 'Update failed. Please try again.';
+    } else if (conciseMessage.includes('Unexpected error')) {
+      conciseMessage = 'Something went wrong. Please try again.';
+    } else if (conciseMessage.includes('Not authenticated')) {
+      conciseMessage = 'Authentication failed. Please reconnect to Jira.';
+    }
+    
+    // Truncate if still too long
+    if (conciseMessage.length > 100) {
+      conciseMessage = conciseMessage.substring(0, 97) + '...';
+    }
+    
+    // Create a new alert element
+    const alertId = 'ticket-alert-' + Date.now();
+    const alertHtml = `
+      <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show sticky-alert single-line-alert" role="alert">
+        <i class="bi bi-${type === 'success' ? 'check-circle-fill' : type === 'danger' ? 'exclamation-triangle-fill' : type === 'warning' ? 'exclamation-triangle-fill' : 'info-circle-fill'}"></i>
+        ${conciseMessage}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    
+    // Add to sticky alerts container
+    const stickyAlerts = document.getElementById('stickyAlerts') || document.querySelector('.sticky-alerts');
+    if (stickyAlerts) {
+      stickyAlerts.insertAdjacentHTML('beforeend', alertHtml);
+      
+      // Auto dismiss after 10 seconds
+      setTimeout(function() {
+        const alertElement = document.getElementById(alertId);
+        if (alertElement) {
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+          bsAlert.close();
+        }
+      }, 10000);
+    }
   }
 
   // Auto-dismiss all Bootstrap alerts (including flashed messages) after 5 seconds
@@ -628,13 +696,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Get selected ticket and scenarios from session/DOM
     const selectedInfo = document.getElementById('selectedInfo');
     if (!selectedInfo) {
-      showAlert('No ticket information available.', 'danger');
+      showStickyAlert('No ticket information available.', 'danger');
       return;
     }
 
     const testScenariosList = document.getElementById('testScenariosList');
     if (!testScenariosList) {
-      showAlert('No test scenarios found. Please generate test scenarios first.', 'warning');
+      showStickyAlert('No test scenarios found. Please generate test scenarios first.', 'warning');
       return;
     }
 
@@ -642,7 +710,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const scenarios = Array.from(testScenariosList.querySelectorAll('li')).map(li => li.textContent.trim()).filter(text => text);
     
     if (scenarios.length === 0) {
-      showAlert('No test scenarios available to add to the ticket.', 'warning');
+      showStickyAlert('No test scenarios available to add to the ticket.', 'warning');
       return;
     }
 
@@ -651,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ticketSummaryElement = selectedInfo.querySelector('.card-header');
     
     if (!ticketKeyElement) {
-      showAlert('Unable to identify the selected ticket.', 'danger');
+      showStickyAlert('Unable to identify the selected ticket.', 'danger');
       return;
     }
 
@@ -758,9 +826,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Set up the confirm button to directly update
         setupDirectConfirmation(data.updated_content);
       } else {
-        // Show error message using existing alert system
+        // Show error message using sticky alert system
         const errorMsg = data.error || 'Failed to prepare ticket update. Please try again.';
-        showAlert(errorMsg, 'danger');
+        showStickyAlert(errorMsg, 'danger');
         
         // Reset button text for retry and set up retry handler
         if (buttonText) buttonText.textContent = 'Retry Loading';
@@ -769,7 +837,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .catch(error => {
       console.error('Load preview error:', error);
-      showAlert('Network error occurred while loading preview. Please try again.', 'danger');
+      showStickyAlert('Network error occurred while loading preview. Please try again.', 'danger');
       
       // Set up retry handler
       setupDirectConfirmation(null); // null indicates retry mode
@@ -942,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Add new event listener for confirmation
     newButton.addEventListener('click', function() {
       if (!updatedContent) {
-        showAlert('No updated content available.', 'danger');
+        showStickyAlert('No updated content available.', 'danger');
         return;
       }
 
@@ -975,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = await res.json().catch(() => ({}));
         
         if (!res.ok || !data.success) {
-          showAlert(data.error || 'Failed to update Test Plan.', 'danger');
+          showStickyAlert(data.error || 'Failed to update Test Plan.', 'danger');
           return;
         }
         
@@ -986,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         setTimeout(() => {
           hideModernModal(); // Close the modal
-          showAlert(data.message || 'Test Plan updated successfully!', 'success');
+          showStickyAlert(data.message || 'Test Plan updated successfully!', 'success');
           
           // Refresh the page to show updated content
           setTimeout(() => {
@@ -995,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 1000);
       })
       .catch(err => {
-        showAlert('Network error: ' + err.message, 'danger');
+        showStickyAlert('Network error: ' + err.message, 'danger');
       })
       .finally(() => {
         // Remove loading overlay and restore button state (only if not successful)
@@ -1494,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(async res => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-          showAlert(data.message || 'Failed to refresh.', 'danger');
+          // Don't show alert for refresh errors as per requirements
           return;
         }
         // Update table
@@ -1537,7 +1605,7 @@ document.addEventListener('DOMContentLoaded', function () {
         convertTimestampsToLocalTime();
       })
       .catch(err => {
-        showAlert('Network error: ' + err.message, 'danger');
+        // Don't show alert for network errors during refresh as per requirements
       })
       .finally(() => {
         // Remove loading states

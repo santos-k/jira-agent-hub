@@ -1016,7 +1016,7 @@ body {
   transform: translateX(-50%);
   width: 90%;
   max-width: 800px;
-  z-index: 1040;
+  z-index: 1060; /* Increased z-index to be above modal (1055) */
   pointer-events: none;
 }
 
