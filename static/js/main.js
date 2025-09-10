@@ -328,6 +328,14 @@ document.addEventListener('DOMContentLoaded', function () {
     attachViewHandler();
     attachDeselectHandler();
     attachGenerateScenariosHandler();
+    
+    // Auto-scroll to the selected ticket section
+    setTimeout(() => {
+      const selectedInfoSection = document.getElementById('selectedInfo');
+      if (selectedInfoSection) {
+        selectedInfoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   }
 
   // Function to handle collapse icon rotation
@@ -561,6 +569,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Attach collapse handlers for the new test scenarios section
           attachCollapseHandlers();
+          
+          // Auto-scroll to the generated test scenarios section and ensure it's expanded
+          setTimeout(() => {
+            const testScenariosSection = document.getElementById('testScenariosContent');
+            const testScenariosHeader = testScenariosSection ? testScenariosSection.previousElementSibling : null;
+            
+            if (testScenariosSection && testScenariosHeader) {
+              // Ensure the section is expanded
+              if (!testScenariosSection.classList.contains('show')) {
+                // Trigger the collapse toggle
+                const toggleButton = testScenariosHeader.querySelector('[data-bs-toggle="collapse"]');
+                if (toggleButton) {
+                  toggleButton.click();
+                }
+              }
+              
+              // Scroll to the section
+              testScenariosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
         })
         .catch(err => {
           btn.disabled = false;
@@ -1185,8 +1213,27 @@ document.addEventListener('DOMContentLoaded', function () {
             li.textContent = s;
             testScenariosList.appendChild(li);
           });
+          
+          // Auto-scroll to the generated test scenarios section and ensure it's expanded
+          setTimeout(() => {
+            const testScenariosSection = document.getElementById('testScenariosContent');
+            const testScenariosHeader = testScenariosSection ? testScenariosSection.previousElementSibling : null;
+            
+            if (testScenariosSection && testScenariosHeader) {
+              // Ensure the section is expanded
+              if (!testScenariosSection.classList.contains('show')) {
+                // Trigger the collapse toggle
+                const toggleButton = testScenariosHeader.querySelector('[data-bs-toggle="collapse"]');
+                if (toggleButton) {
+                  toggleButton.click();
+                }
+              }
+              
+              // Scroll to the section
+              testScenariosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
         }
-        
         // Update the Generate button text to show "Regenerate Test Scenarios"
         const generateBtn = document.getElementById('generateScenariosBtn');
         if (generateBtn) {
