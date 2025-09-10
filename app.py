@@ -600,14 +600,16 @@ def refresh():
                         test_scenarios_html = process_test_scenarios_content(test_scenarios_raw)
             else:
                 logger.warning("Failed to refresh issue %s: %s", key, issue_data.get('error'))
-                description_text = ''
-                description_html = ''
-                test_scenarios_html = ''
+                # Preserve existing description if refresh fails
+                description_text = selected.get('description', '')
+                description_html = selected.get('description_html', '')
+                test_scenarios_html = selected.get('test_scenarios_field', '')
         except Exception:
             logger.exception("Exception while refreshing issue %s", key)
-            description_text = ''
-            description_html = ''
-            test_scenarios_html = ''
+            # Preserve existing description if refresh fails
+            description_text = selected.get('description', '')
+            description_html = selected.get('description_html', '')
+            test_scenarios_html = selected.get('test_scenarios_field', '')
         selected_info = {
             'key': key,
             'url': url,

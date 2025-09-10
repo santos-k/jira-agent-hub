@@ -373,14 +373,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const testScenariosDiv = selInfo.querySelector('.test-scenarios-field');
     
     if (descDiv) {
+      // Fix: Properly handle all description formats
       if (selected.description_html) {
         descDiv.innerHTML = selected.description_html;
       } else if (selected.description) {
+        // If we only have plain text, preserve line breaks
         descDiv.textContent = selected.description;
         descDiv.style.whiteSpace = 'pre-wrap';
       } else {
         descDiv.innerHTML = '<div class="text-muted">No description available</div>';
       }
+      
+      // Ensure the description content is properly accessible
+      descDiv.setAttribute('data-description-loaded', 'true');
     }
     
     if (testScenariosDiv) {
@@ -397,6 +402,9 @@ document.addEventListener('DOMContentLoaded', function () {
     attachDeselectHandler();
     attachGenerateScenariosHandler();
     
+    // Make sure the description tab is properly initialized
+    initializeDescriptionTabs();
+    
     // Auto-scroll to the selected ticket section
     setTimeout(() => {
       const selectedInfoSection = document.getElementById('selectedInfo');
@@ -404,6 +412,31 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedInfoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
+  }
+
+  // Function to initialize description tabs
+  function initializeDescriptionTabs() {
+    // Make sure Bootstrap tabs are properly initialized
+    const descriptionTabs = document.getElementById('descriptionTabs');
+    if (descriptionTabs) {
+      // Initialize Bootstrap tabs if not already done
+      const tabTriggerList = [].slice.call(descriptionTabs.querySelectorAll('[data-bs-toggle="tab"]'));
+      tabTriggerList.map(function (tabTriggerEl) {
+        return new bootstrap.Tab(tabTriggerEl);
+      });
+      
+      // Make sure the description tab is active by default
+      const descriptionTab = document.getElementById('description-tab');
+      if (descriptionTab) {
+        // Don't force activation if another tab is already active
+        const activeTab = descriptionTabs.querySelector('.nav-link.active');
+        if (!activeTab) {
+          // Activate the description tab
+          const descriptionTabInstance = new bootstrap.Tab(descriptionTab);
+          descriptionTabInstance.show();
+        }
+      }
+    }
   }
 
   // Function to handle collapse icon rotation
@@ -534,12 +567,85 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
 
-        // Get description from the selected ticket
+        // Get description from the selected ticket - comprehensive logic for tabbed interface
         let description = '';
-        const descDiv = selInfo.querySelector('.adf-desc');
-        if (descDiv) {
-          description = descDiv.textContent || descDiv.innerText || '';
+        
+        // Method 1: Try to get description from the description tab content
+        const descriptionPane = selInfo.querySelector('#description-pane');
+        if (descriptionPane) {
+          // Look for the adf-desc div within the description pane
+          const adfDesc = descriptionPane.querySelector('.adf-desc');
+          if (adfDesc) {
+            // Check if it contains actual content (not the "No description available" message)
+            if (adfDesc.innerHTML && !adfDesc.innerHTML.includes('No description available')) {
+              description = adfDesc.textContent || adfDesc.innerText || '';
+            }
+            // If it only has text content, use that
+            else if (adfDesc.textContent && !adfDesc.textContent.includes('No description available')) {
+              description = adfDesc.textContent || '';
+            }
+          }
+          // If no adf-desc div, try to get content directly from the pane
+          else {
+            const content = descriptionPane.textContent || descriptionPane.innerText || '';
+            if (content && !content.includes('No description available')) {
+              description = content;
+            }
+          }
         }
+        
+        // Method 2: Try to get description from the tab content directly
+        if (!description.trim()) {
+          const descriptionTabsContent = selInfo.querySelector('#descriptionTabsContentInner');
+          if (descriptionTabsContent) {
+            const activePane = descriptionTabsContent.querySelector('.tab-pane.active');
+            if (activePane) {
+              const adfDesc = activePane.querySelector('.adf-desc');
+              if (adfDesc) {
+                if (adfDesc.innerHTML && !adfDesc.innerHTML.includes('No description available')) {
+                  description = adfDesc.textContent || adfDesc.innerText || '';
+                } else if (adfDesc.textContent && !adfDesc.textContent.includes('No description available')) {
+                  description = adfDesc.textContent || '';
+                }
+              }
+            }
+          }
+        }
+        
+        // Method 3: Try to get description from any .adf-desc element
+        if (!description.trim()) {
+          const adfDescElements = selInfo.querySelectorAll('.adf-desc');
+          for (const adfDesc of adfDescElements) {
+            if (adfDesc.innerHTML && !adfDesc.innerHTML.includes('No description available')) {
+              description = adfDesc.textContent || adfDesc.innerText || '';
+              if (description.trim()) break;
+            } else if (adfDesc.textContent && !adfDesc.textContent.includes('No description available')) {
+              description = adfDesc.textContent || '';
+              if (description.trim()) break;
+            }
+          }
+        }
+        
+        // Method 4: Try to get description from session data in the card header
+        if (!description.trim()) {
+          const cardHeader = selInfo.querySelector('.card-header');
+          if (cardHeader) {
+            const ticketKey = cardHeader.querySelector('a')?.textContent;
+            if (ticketKey) {
+              // Try to find the ticket in the search results table to get its description
+              const tableRows = document.querySelectorAll('.table-row');
+              for (const row of tableRows) {
+                const rowKey = row.dataset.key;
+                if (rowKey === ticketKey) {
+                  // Found the row, but we don't have description data in the table
+                  // This is a limitation of the current implementation
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
         if (!description.trim()) {
           selInfo.insertAdjacentHTML('beforeend', '<div class="alert alert-warning mt-2">No description found for this ticket. Please ensure the ticket has a description.</div>');
           return;
@@ -567,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ description: description })
+          body: JSON.stringify({ description: description.trim() })
         })
         .then(async res => {
           btn.disabled = false;
@@ -1673,6 +1779,7 @@ document.addEventListener('DOMContentLoaded', function () {
   attachUpdateConfirmHandler();
   attachCollapseHandlers();
   attachTableSortHandlers();
+  initializeDescriptionTabs(); // Initialize description tabs
   autoDismissAlerts();
   checkTableScrolling(); // Check if table needs scrolling on page load
   
