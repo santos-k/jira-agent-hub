@@ -813,7 +813,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Extract scenarios from the DOM
-    const scenarios = Array.from(testScenariosList.querySelectorAll('li')).map(li => li.textContent.trim()).filter(text => text);
+    let scenarios = Array.from(testScenariosList.querySelectorAll('li')).map(li => li.textContent.trim()).filter(text => text);
+    
+    // Apply the same filtering as used in display to ensure consistency
+    scenarios = scenarios.filter(scenario => {
+      // Skip introductory text like "Here are concise, end-to-end test scenarios..."
+      return !scenario.toLowerCase().includes("here are") && 
+             !scenario.toLowerCase().includes("test scenario");
+    });
     
     if (scenarios.length === 0) {
       showStickyAlert('No test scenarios available to add to the ticket.', 'warning');

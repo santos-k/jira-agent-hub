@@ -754,8 +754,13 @@ def generate_test_scenarios():
             return jsonify({'error': 'Failed to generate scenarios.'}), 500
             
         # Store scenarios in session
+        # Apply the same filtering as used in frontend display to ensure consistency
+        if scenarios:
+            filtered_scenarios = [scenario for scenario in scenarios if not (scenario.lower().startswith("here are") or "test scenario" in scenario.lower())]
+        else:
+            filtered_scenarios = scenarios
         selected = session.get('selected_ticket', {})
-        selected['test_scenarios'] = scenarios
+        selected['test_scenarios'] = filtered_scenarios
         session['selected_ticket'] = selected
         
         return jsonify({'scenarios': scenarios})
@@ -805,7 +810,12 @@ def manual_prompt_scenarios():
                 'prompt': selected.get('last_prompt', 'Default'),
                 'scenarios': selected['test_scenarios']
             })
-        selected['test_scenarios'] = scenarios
+        # Apply the same filtering as used in frontend display to ensure consistency
+        if scenarios:
+            filtered_scenarios = [scenario for scenario in scenarios if not (scenario.lower().startswith("here are") or "test scenario" in scenario.lower())]
+        else:
+            filtered_scenarios = scenarios
+        selected['test_scenarios'] = filtered_scenarios
         selected['last_prompt'] = prompt
         selected['scenario_history'] = history
         session['selected_ticket'] = selected
