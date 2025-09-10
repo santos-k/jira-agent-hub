@@ -753,17 +753,26 @@ def generate_test_scenarios():
         if not scenarios:
             return jsonify({'error': 'Failed to generate scenarios.'}), 500
             
-        # Store scenarios in session
-        # Apply the same filtering as used in frontend display to ensure consistency
+        # Store scenarios in session with less aggressive formatting rules
         if scenarios:
-            filtered_scenarios = [scenario for scenario in scenarios if not (scenario.lower().startswith("here are") or "test scenario" in scenario.lower())]
+            # Apply the same filtering as used in manual prompt to ensure consistency, but be less aggressive
+            filtered_scenarios = []
+            for scenario in scenarios:
+                # Skip clear introductory text
+                if scenario.lower().startswith("here are") or scenario.lower().startswith("in conclusion"):
+                    continue
+                # Keep scenarios that look like actual test scenarios
+                if len(scenario) > 15:  # Minimum length for a meaningful scenario
+                    # Clean any existing markers and ensure plain integer numbering format
+                    clean_scenario = re.sub(r'^(?:\d+\.|-|•|\*)\s*', '', scenario.strip())
+                    filtered_scenarios.append(clean_scenario)
         else:
             filtered_scenarios = scenarios
         selected = session.get('selected_ticket', {})
         selected['test_scenarios'] = filtered_scenarios
         session['selected_ticket'] = selected
         
-        return jsonify({'scenarios': scenarios})
+        return jsonify({'scenarios': filtered_scenarios})
     except Exception as e:
         logger.exception(f"Error generating test scenarios: {str(e)}")
         return jsonify({'error': f'Error: {str(e)}'}), 500
@@ -810,9 +819,19 @@ def manual_prompt_scenarios():
                 'prompt': selected.get('last_prompt', 'Default'),
                 'scenarios': selected['test_scenarios']
             })
-        # Apply the same filtering as used in frontend display to ensure consistency
+        # Apply formatting rules but be less aggressive to preserve AI responses
         if scenarios:
-            filtered_scenarios = [scenario for scenario in scenarios if not (scenario.lower().startswith("here are") or "test scenario" in scenario.lower())]
+            # Filter out only clear introductory or conclusion text, be more permissive
+            filtered_scenarios = []
+            for scenario in scenarios:
+                # Skip clear introductory text
+                if scenario.lower().startswith("here are") or scenario.lower().startswith("in conclusion"):
+                    continue
+                # Keep scenarios that look like actual test scenarios
+                if len(scenario) > 15:  # Minimum length for a meaningful scenario
+                    # Clean any existing markers and ensure plain integer numbering format
+                    clean_scenario = re.sub(r'^(?:\d+\.|-|•|\*)\s*', '', scenario.strip())
+                    filtered_scenarios.append(clean_scenario)
         else:
             filtered_scenarios = scenarios
         selected['test_scenarios'] = filtered_scenarios
@@ -821,9 +840,9 @@ def manual_prompt_scenarios():
         session['selected_ticket'] = selected
         # Return new scenarios and last history item
         last_history = history[-1] if history else None
-        scenario_count = len(scenarios) if scenarios else 0
+        scenario_count = len(filtered_scenarios) if filtered_scenarios else 0
         logger.info(f"Manual prompt success: {scenario_count} scenarios generated.")
-        return jsonify({'scenarios': scenarios, 'history': last_history}), 200
+        return jsonify({'scenarios': filtered_scenarios, 'history': last_history}), 200
     except Exception as e:
         logger.error(f"Manual prompt error: {e}")
         return jsonify({'error': 'internal error'}), 500
@@ -1176,7 +1195,7 @@ def generate_scenarios_with_ai(description, prompt=None):
         logger.error('No description provided for scenario generation')
         return None, 'Description is required.'
         
-    # Prepare the prompt
+    # Prepare the prompt with strict formatting instructions
     if prompt:
         full_prompt = f"{prompt}\n\nStory:\n{description}\n\nTest Scenarios:"
     else:
@@ -1193,6 +1212,8 @@ def generate_scenarios_with_ai(description, prompt=None):
             "\n- Do not include introduction or conclusion text."
             "\n- Do not include symbols like *, **, or bullets."
             "\n- Each scenario must be on a new line."
+            "\n- Keep scenarios concise and focused."
+            "\n- Limit output to maximum 20 scenarios."
             "\n- Follow this exact format:"
             "\n1. Verify user can log in with valid credentials."
             "\n2. Verify user cannot log in with invalid credentials."

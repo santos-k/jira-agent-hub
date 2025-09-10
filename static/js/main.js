@@ -706,9 +706,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     <i class="bi bi-clipboard"></i>
                     <span class="d-none d-md-inline ms-1">Copy All</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
+                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
                     <i class="bi bi-chat-square-text"></i>
-                    <span class="d-none d-md-inline ms-1">Execute Manual</span>
+                    <span class="d-none d-md-inline ms-1">Custom Prompt</span>
                   </button>
                   <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
                     <i class="bi bi-upload"></i>
@@ -1229,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', function () {
     chatContainer.className = 'inline-chat';
     chatContainer.innerHTML = `
       <div class="inline-chat-header">
-        <span class="fw-bold">Manual Prompt Chat</span>
+        <span class="fw-bold">Custom Prompt Chat</span>
         <button type="button" class="btn-close btn-sm" onclick="this.closest('.inline-chat').style.display='none'; this.closest('.card').querySelector('.manual-prompt-btn').style.backgroundColor=''; this.closest('.card').querySelector('.manual-prompt-btn').style.color='';"></button>
       </div>
       <div class="inline-chat-messages" id="inlineChatMessages">
@@ -1250,6 +1250,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Auto-resize textarea
     const textarea = chatContainer.querySelector('#inlineChatInput');
     textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+    textarea.addEventListener('focus', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+    textarea.addEventListener('blur', function() {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 80) + 'px';
     });
@@ -1371,14 +1379,31 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
         
-        // Add AI response
+        // Add AI response with strict formatting rules
         const aiMsg = document.createElement('div');
         aiMsg.className = 'inline-chat-message ai';
-        aiMsg.innerHTML = `<strong>Generated ${data.scenarios.length} scenarios:</strong><br><br>` + 
-          data.scenarios.map((s, i) => `${i + 1}. ${s}`).join('<br>');
+        
+        // Apply the same filtering as used in backend to ensure consistency
+        // Apply the same filtering as used in backend to ensure consistency
+        const filteredScenarios = data.scenarios.filter(scenario => {
+          // Skip clear introductory text
+          return !scenario.toLowerCase().startsWith("here are") && 
+                 !scenario.toLowerCase().startsWith("in conclusion") &&
+                 scenario.length > 15; // Minimum length for a meaningful scenario
+        });
+        
+        // Format scenarios with plain integer numbering
+        const formattedScenarios = filteredScenarios.map((scenario, index) => {
+          // Remove any existing markers and ensure plain integer numbering format
+          const cleanScenario = scenario.replace(/^(?:\d+\.|-|•|\*)\s*/, '').trim();
+          return `${index + 1}. ${cleanScenario}`;
+        });
+        
+        aiMsg.innerHTML = `<strong>Generated ${formattedScenarios.length} scenarios:</strong><br><br>` + 
+          formattedScenarios.join('<br>');
         messages.appendChild(aiMsg);
         
-        // Update the main scenarios list
+        // Update the main scenarios list with strict formatting
         const testScenariosList = document.getElementById('testScenariosList');
         if (testScenariosList) {
           // Clear existing scenarios but keep controls
@@ -1388,10 +1413,12 @@ document.addEventListener('DOMContentLoaded', function () {
             testScenariosList.appendChild(controlsDiv);
           }
           
-          // Add new scenarios
-          data.scenarios.forEach(s => {
+          // Add new scenarios with strict formatting
+          formattedScenarios.forEach(scenario => {
             const li = document.createElement('li');
-            li.textContent = s;
+            // Extract just the text part after the numbering
+            const scenarioText = scenario.replace(/^\d+\.\s*/, '');
+            li.textContent = scenarioText;
             testScenariosList.appendChild(li);
           });
           
@@ -1468,6 +1495,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         let allText = '';
         items.forEach((item, index) => {
+          // Apply formatting with plain integer numbering
           allText += (index + 1) + '. ' + item.textContent + '\n';
         });
         
