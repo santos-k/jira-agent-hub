@@ -1203,31 +1203,24 @@ def generate_scenarios_with_ai(description, prompt=None):
     if prompt:
         full_prompt = f"{prompt}\n\nStory:\n{description}\n\nTest Scenarios:"
     else:
-        full_prompt = (
-            "Generate possible concise (keep as minimum as possible), end-to-end test scenarios for the story below. "
-            "Each scenario should be one sentence, covering the full flow: user action → system behavior → expected outcome. "
-            "Focus on critical paths; combine multiple checks when logical. "
-            "Avoid minor edge cases unless essential. "
-            "Phrase each scenario like: "
-            "Verify that [action] results in [expected outcome], including [key condition or variation]."
-            "\n\nIMPORTANT GUIDELINES:"
-            "\n- Focus on medium- or high-level scenarios, not very granular steps."
-            "\n- Each scenario should cover a complete flow or business case, not small UI actions."
-            "\n- Avoid breaking down into very small validations like checking for button text, dialog presence, or single error messages."
-            "\n\nIMPORTANT FORMATTING RULES:"
-            "\n- Generate only the test scenarios as a numbered list."
-            "\n- Use plain integers for numbering (1, 2, 3, ...)."
-            "\n- Do not include introduction or conclusion text."
-            "\n- Do not include symbols like *, **, or bullets."
-            "\n- Each scenario must be on a new line."
-            "\n- Keep scenarios concise and focused."
-            "\n- Limit output to maximum 20 scenarios."
-            "\n- Follow this exact format:"
-            "\n1. Verify user can log in with valid credentials."
-            "\n2. Verify user cannot log in with invalid credentials."
-            "\n3. Verify password reset functionality works."
-            f"\n\nStory:\n{description}\n\nTest Scenarios:"
-        )
+        full_prompt = f"""Generate the minimum as possible set of concise, high-level test scenarios that fully cover the story and its acceptance criteria. 
+            Each scenario must be one/two sentence in the format:
+            "Verify that [user action(s)] results in [system behavior/outcome(s)], including [key condition(s) or variation(s)]."
+
+            Strict Rules:
+            - Always minimize the number of scenarios — fewer is better.
+            - Combine multiple acceptance criteria and related checks into a single broader scenario whenever possible.
+            - Do not create more than 5 scenarios, even if the story has many acceptance criteria.
+            - Focus only on critical flows and main acceptance criteria.
+            - Ignore minor or low-value edge cases unless essential to core functionality.
+
+            Formatting:
+            - Output only a numbered list (1, 2, 3, ...).
+            - No introduction, explanation, or conclusion.
+            - No bullets, *, or extra symbols.
+            \n\nStory:\n{description}\n\nTest Scenarios:
+            """
+        
     
     # Use Google AI for test scenario generation
     api_key = session.get('genai_api_key')
