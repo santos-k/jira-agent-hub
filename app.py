@@ -1120,9 +1120,11 @@ def update_test_plan_scenarios(current_content, test_scenarios):
             # Add an empty line after "Test Scenarios:"
             updated_lines.append('')
             
-            # Add the numbered test scenarios
+            # Add the numbered test scenarios with strict formatting
             for j, scenario in enumerate(test_scenarios, 1):
-                updated_lines.append(f"{j}. {scenario}")
+                # Ensure consistent formatting by removing any existing markers
+                clean_scenario = re.sub(r'^(?:\d+\.|-|•|\*)\s*', '', scenario.strip())
+                updated_lines.append(f"{j}. {clean_scenario}")
             
             updated_lines.append('')  # Add empty line after scenarios
             scenarios_added = True
@@ -1185,6 +1187,16 @@ def generate_scenarios_with_ai(description, prompt=None):
             "Avoid minor edge cases unless essential. "
             "Phrase each scenario like: "
             "Verify that [action] results in [expected outcome], including [key condition or variation]."
+            "\n\nIMPORTANT FORMATTING RULES:"
+            "\n- Generate only the test scenarios as a numbered list."
+            "\n- Use plain integers for numbering (1, 2, 3, ...)."
+            "\n- Do not include introduction or conclusion text."
+            "\n- Do not include symbols like *, **, or bullets."
+            "\n- Each scenario must be on a new line."
+            "\n- Follow this exact format:"
+            "\n1. Verify user can log in with valid credentials."
+            "\n2. Verify user cannot log in with invalid credentials."
+            "\n3. Verify password reset functionality works."
             f"\n\nStory:\n{description}\n\nTest Scenarios:"
         )
     
@@ -1207,11 +1219,21 @@ def generate_scenarios_with_ai(description, prompt=None):
             line = line.strip()
             if not line:
                 continue
-            m = re.match(r"^(?:\d+\.|-|•|\*)\s*(.+)$", line)
+            # Updated regex to match plain integers only and extract the scenario text
+            m = re.match(r"^(\d+)\.\s*(.+)$", line)
             if m:
-                scenarios.append(m.group(1).strip())
-            else:
-                scenarios.append(line)
+                scenarios.append(m.group(2).strip())
+            # Additional check for lines that might start with other markers
+            elif re.match(r"^(?:-|•|\*)\s*(.+)$", line):
+                # Handle lines with other markers by extracting the text
+                m2 = re.match(r"^(?:-|•|\*)\s*(.+)$", line)
+                if m2:
+                    scenarios.append(m2.group(1).strip())
+            # Only add lines that are not introductory text
+            elif line and not line.lower().startswith(("here are", "in conclusion", "test scenarios:", "story:")):
+                # Check if it's a valid scenario by ensuring it's not just introductory text
+                if len(line) > 10 and not line.lower().startswith(("note:", "important:", "reminder:")):
+                    scenarios.append(line)
     return scenarios, None
 
 if __name__ == "__main__":
