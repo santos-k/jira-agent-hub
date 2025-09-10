@@ -1732,7 +1732,8 @@ document.addEventListener('DOMContentLoaded', function () {
     searchForm.addEventListener('submit', function (e) {
       // Add loading state to search form
       const submitBtn = searchForm.querySelector('button[type="submit"]');
-      const searchInput = searchForm.querySelector('input[type="search"], input[name="query"]');
+      // Updated selector to be more specific and reliable
+      const searchInput = document.getElementById('queryInput') || searchForm.querySelector('input[name="query"]');
       const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
       
       if (submitBtn) {
@@ -1746,7 +1747,8 @@ document.addEventListener('DOMContentLoaded', function () {
       
       if (searchInput) {
         searchInput.classList.add('search-loading');
-        searchInput.disabled = true;
+        // Removed disabling of searchInput to ensure form data is submitted properly
+        // searchInput.disabled = true;
       }
       
       // Remove selected ticket info from UI
