@@ -562,6 +562,9 @@ def refresh():
             "url": ticket_url,
         })
     session["search_results"] = results
+    # Don't clear last_query - keep it for consistency with the last search
+    # session["last_query"] = ""  # Removed this line to preserve last query
+    
     # If a ticket is selected, refresh its description
     selected = session.get('selected_ticket')
     selected_info = None

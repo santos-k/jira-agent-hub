@@ -11,6 +11,32 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         tableResponsive.classList.remove('has-many-rows');
       }
+      
+      // Enable/disable Clear and Refresh buttons based on whether results are displayed
+      const clearBtn = document.querySelector('button[onclick*="clearForm"]');
+      const refreshBtn = document.getElementById('refreshBtn');
+      
+      if (rows.length > 0) {
+        // Enable buttons when there are results
+        if (clearBtn) {
+          clearBtn.disabled = false;
+          clearBtn.classList.remove('disabled');
+        }
+        if (refreshBtn) {
+          refreshBtn.disabled = false;
+          refreshBtn.classList.remove('disabled');
+        }
+      } else {
+        // Disable buttons when there are no results
+        if (clearBtn) {
+          clearBtn.disabled = true;
+          clearBtn.classList.add('disabled');
+        }
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.classList.add('disabled');
+        }
+      }
     }
   }
   
@@ -1729,6 +1755,15 @@ document.addEventListener('DOMContentLoaded', function () {
               </div>`;
             });
           }
+          
+          // Enable Clear and Refresh buttons since we now have results
+          const clearBtn = document.querySelector('button[onclick*="clearForm"]');
+          if (clearBtn) {
+            clearBtn.disabled = false;
+            clearBtn.classList.remove('disabled');
+          }
+          refreshBtn.disabled = false;
+          refreshBtn.classList.remove('disabled');
         }
         // Update selected ticket info with new structure
         if (data.selected) {
@@ -1805,6 +1840,26 @@ document.addEventListener('DOMContentLoaded', function () {
       
       // Note: The actual search response will remove loading states when the page reloads
       // or when the response is processed by the server-side rendering
+    });
+  }
+
+  // Clear button handler: disable buttons when clearing results
+  const clearForm = document.getElementById('clearForm');
+  if (clearForm) {
+    clearForm.addEventListener('submit', function () {
+      // Disable Clear and Refresh buttons after clearing
+      setTimeout(() => {
+        const clearBtn = document.querySelector('button[onclick*="clearForm"]');
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (clearBtn) {
+          clearBtn.disabled = true;
+          clearBtn.classList.add('disabled');
+        }
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.classList.add('disabled');
+        }
+      }, 100);
     });
   }
 

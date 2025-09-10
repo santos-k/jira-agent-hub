@@ -21,11 +21,11 @@
           <i class="bi bi-search"></i>
           <span class="btn-text d-none d-lg-inline ms-1">Search</span>
         </button>
-        <button type="button" class="btn btn-outline-secondary action-btn" onclick="document.getElementById('clearForm').submit();" title="Clear Results">
+        <button type="button" class="btn btn-outline-secondary action-btn{% if not search_results %} disabled{% endif %}" onclick="document.getElementById('clearForm').submit();" title="Clear Results"{% if not search_results %} disabled{% endif %}>
           <i class="bi bi-x-circle"></i>
           <span class="btn-text d-none d-xl-inline ms-1">Clear</span>
         </button>
-        <button type="button" class="btn btn-outline-info action-btn" id="refreshBtn" title="Refresh">
+        <button type="button" class="btn btn-outline-info action-btn{% if not search_results %} disabled{% endif %}" id="refreshBtn" title="Refresh"{% if not search_results %} disabled{% endif %}>
           <i class="bi bi-arrow-clockwise"></i>
           <span class="btn-text d-none d-xl-inline ms-1">Refresh</span>
         </button>
