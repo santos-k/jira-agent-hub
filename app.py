@@ -1072,7 +1072,8 @@ def confirm_update_ticket_with_scenarios():
                 logger.info(f"Successfully updated Test Plan for issue {issue_key}")
                 return jsonify({
                     'success': True, 
-                    'message': f'Test Plan updated for {issue_key}.'
+                    'message': f'Test Plan updated for {issue_key}.',
+                    'reload_page': True  # Add this flag to indicate page should be reloaded
                 }), 200
             else:
                 error_msg = result.get('error', 'Failed to update Test Plan.')
@@ -1209,6 +1210,10 @@ def generate_scenarios_with_ai(description, prompt=None):
             "Avoid minor edge cases unless essential. "
             "Phrase each scenario like: "
             "Verify that [action] results in [expected outcome], including [key condition or variation]."
+            "\n\nIMPORTANT GUIDELINES:"
+            "\n- Focus on medium- or high-level scenarios, not very granular steps."
+            "\n- Each scenario should cover a complete flow or business case, not small UI actions."
+            "\n- Avoid breaking down into very small validations like checking for button text, dialog presence, or single error messages."
             "\n\nIMPORTANT FORMATTING RULES:"
             "\n- Generate only the test scenarios as a numbered list."
             "\n- Use plain integers for numbering (1, 2, 3, ...)."

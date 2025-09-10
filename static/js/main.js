@@ -1119,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!previewSection || !currentContentEl || !updatedContentEl) {
       console.error('Preview elements not found in modal');
       return;
-    }
+      }
     
     // Update the content
     currentContentEl.textContent = currentContent || 'No existing content';
@@ -1134,8 +1134,105 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update the confirm handler
     updateConfirmButtonHandler(updatedContent);
     
-    // Scroll to preview section
-    previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Auto-scroll to the Test Scenarios section within the updated content
+    setTimeout(() => {
+      // First ensure the modal is fully visible
+      const modalContent = document.querySelector('.modern-modal-content');
+      if (modalContent) {
+        // Find the position of "Test Scenarios:" in the updated content
+        const updatedContentText = updatedContentEl.textContent;
+        const testScenariosIndex = updatedContentText.indexOf('Test Scenarios:');
+        
+        if (testScenariosIndex !== -1) {
+          // Calculate the position to scroll to
+          const lineHeight = 20; // Approximate line height
+          const linesToTestScenarios = updatedContentText.substring(0, testScenariosIndex).split('\n').length;
+          const scrollToPosition = linesToTestScenarios * lineHeight;
+          
+          // Scroll the updated content area to the Test Scenarios section
+          updatedContentEl.scrollTo({
+            top: scrollToPosition - 50, // Leave some margin at the top
+            behavior: 'smooth'
+          });
+        }
+        
+        // Also scroll the modal to the preview section
+        const previewPosition = previewSection.offsetTop;
+        modalContent.scrollTo({
+          top: previewPosition - 20, // Leave some margin at the top
+          behavior: 'smooth'
+        });
+      }
+    }, 200); // Slightly longer delay to ensure DOM is fully rendered
+  }
+
+  // Add event listeners for the edit functionality
+  function attachEditTestPlanHandlers() {
+    // Edit button
+    const editBtn = document.getElementById('editTestPlanBtn');
+    if (editBtn) {
+      editBtn.addEventListener('click', function() {
+        const updatedContentEl = document.getElementById('updatedTestPlanContent');
+        const editSection = document.getElementById('editTestPlanSection');
+        const editableTextarea = document.getElementById('editableTestPlanContent');
+        
+        if (updatedContentEl && editSection && editableTextarea) {
+          // Populate the textarea with the current updated content
+          editableTextarea.value = updatedContentEl.textContent;
+          
+          // Hide the preview and show the edit section
+          updatedContentEl.closest('.preview-column').style.display = 'none';
+          editSection.style.display = 'block';
+          
+          // Focus the textarea
+          editableTextarea.focus();
+        }
+      });
+    }
+    
+    // Cancel edit button
+    const cancelBtn = document.getElementById('cancelEditTestPlanBtn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function() {
+        const updatedContentEl = document.getElementById('updatedTestPlanContent');
+        const editSection = document.getElementById('editTestPlanSection');
+        
+        if (updatedContentEl && editSection) {
+          // Hide the edit section and show the preview
+          editSection.style.display = 'none';
+          updatedContentEl.closest('.preview-column').style.display = 'block';
+        }
+      });
+    }
+    
+    // Save edit button
+    const saveBtn = document.getElementById('saveEditTestPlanBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        const updatedContentEl = document.getElementById('updatedTestPlanContent');
+        const editSection = document.getElementById('editTestPlanSection');
+        const editableTextarea = document.getElementById('editableTestPlanContent');
+        const confirmButton = document.getElementById('confirmUpdateTicket');
+        
+        if (updatedContentEl && editSection && editableTextarea && confirmButton) {
+          // Get the edited content
+          const editedContent = editableTextarea.value;
+          
+          // Update the displayed content
+          updatedContentEl.textContent = editedContent;
+          
+          // Update the stored content for confirmation
+          confirmButton.dataset.updatedContent = editedContent;
+          
+          // Update the confirm handler with the new content
+          updateConfirmButtonHandler(editedContent);
+          
+          // Hide the edit section and show the preview
+          editSection.style.display = 'none';
+          updatedContentEl.closest('.preview-column').style.display = 'block';
+        }
+      });
+    }
   }
 
   function updateConfirmButtonHandler(updatedContent) {
@@ -1871,6 +1968,7 @@ document.addEventListener('DOMContentLoaded', function () {
   attachUpdateConfirmHandler();
   attachCollapseHandlers();
   attachTableSortHandlers();
+  attachEditTestPlanHandlers(); // Add this line
   initializeDescriptionTabs(); // Initialize description tabs
   autoDismissAlerts();
   checkTableScrolling(); // Check if table needs scrolling on page load
