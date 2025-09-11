@@ -156,7 +156,6 @@
                     </div>
                     
                     <!-- Generated Test Scenarios Tab -->
-                    {% if selected.test_scenarios %}
                     <div class="tab-pane fade" id="generated-test-scenarios-pane" role="tabpanel" aria-labelledby="generated-test-scenarios-tab">
                       <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
                         <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
@@ -172,48 +171,26 @@
                           <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
                         </button>
                       </div>
+                      {% if selected.test_scenarios %}
                       <ol id="testScenariosList">
                         {% for scenario in selected.test_scenarios %}
-                          <li>{{ scenario }}</li>
-                        {% endfor %}
-                      </ol>
-                    </div>
-                    {% endif %}
-                  </div>
-
-                  {# History Section #}
-                  {% if selected.scenario_history %}
-                    <div class="card mt-2">
-
-                    <!-- Generated Test Cases Tab -->
-                    {% if selected.generated_test_cases %}
-                    <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
-                      <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                        <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
-                          <i class="bi bi-clipboard"></i>
-                          <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-                          <i class="bi bi-chat-square-text"></i>
-                          <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
-                          <i class="bi bi-upload"></i>
-                          <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-                        </button>
-                      </div>
-                      <ol id="testCasesList">
-                        {% for test_case in selected.generated_test_cases %}
-                          <li class="d-flex align-items-start">
-                            <span class="flex-grow-1">{{ test_case }}</span>
-                            <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Edit test case" data-scenario="{{ test_case|e }}">
-                              <i class="bi bi-pencil-square"></i>
-                            </button>
+                          <li>
+                            <div class="d-flex align-items-start">
+                              <div class="flex-grow-1">{{ scenario }}</div>
+                              <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Generate test case" data-scenario="{{ scenario|e }}">
+                                <i class="bi bi-pencil-square"></i>
+                              </button>
+                            </div>
                           </li>
                         {% endfor %}
                       </ol>
+                      {% else %}
+                      <div class="text-muted">No generated test scenarios yet. Click "Generate Test Scenarios" to create them.</div>
+                      {% endif %}
                     </div>
-                    {% endif %}
+
+                    {% if selected.scenario_history %}
+                    <div class="card mt-2">
                       <div class="card-header d-flex justify-content-between align-items-center">
                         <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#scenarioHistoryContent" aria-expanded="false" aria-controls="scenarioHistoryContent">
                           <i class="bi bi-chevron-right" id="scenarioHistoryIcon"></i>
@@ -230,7 +207,41 @@
                         </div>
                       </div>
                     </div>
-                  {% endif %}
+                    {% endif %}
+
+                    <!-- Generated Test Cases Tab -->
+                    <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
+                      <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
+                          <i class="bi bi-clipboard"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+                          <i class="bi bi-chat-square-text"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
+                          <i class="bi bi-upload"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+                        </button>
+                      </div>
+                      {% if selected.generated_test_cases %}
+                        <ol id="testCasesList">
+                          {% for test_case in selected.generated_test_cases %}
+                            <li class="d-flex align-items-start">
+                              <span class="flex-grow-1">{{ test_case }}</span>
+                              <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="{{ test_case|e }}">
+                                <i class="bi bi-pencil-square"></i>
+                              </button>
+                            </li>
+                          {% endfor %}
+                        </ol>
+                      {% else %}
+                        <div class="text-muted">No generated test cases yet. Click the pencil icon next to a test scenario to generate a test case.</div>
+                      {% endif %}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
