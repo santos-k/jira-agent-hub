@@ -715,68 +715,99 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Check if the generated test scenarios tab exists, if not create it
           let testScenariosList = document.getElementById('testScenariosList');
-          if (!testScenariosList) {
+          let generatedTab = document.getElementById('generated-test-scenarios-tab');
+          let scenariosPane = document.getElementById('generated-test-scenarios-pane');
+
+          // If we have the tab but not the list, look for it inside the existing pane
+          if (!testScenariosList && scenariosPane) {
+            // First clear any placeholder text that might be present
+            const placeholder = scenariosPane.querySelector('.text-muted');
+            if (placeholder) {
+              placeholder.remove();
+            }
+
+            testScenariosList = scenariosPane.querySelector('ol');
+            // If still no list, create one
+            if (!testScenariosList) {
+              testScenariosList = document.createElement('ol');
+              testScenariosList.id = 'testScenariosList';
+
+              // Find where to insert the list (after controls if they exist)
+              const controls = scenariosPane.querySelector('.scenario-controls');
+              if (controls) {
+                scenariosPane.insertBefore(testScenariosList, controls.nextSibling);
+              } else {
+                scenariosPane.appendChild(testScenariosList);
+              }
+            }
+          }
+          // If no testScenariosList and no pane, we need to create them - this shouldn't happen
+          // with the current UI design but handle it just in case
+          else if (!testScenariosList && !scenariosPane) {
             // Create the generated test scenarios tab dynamically
             const tabList = document.getElementById('descriptionTabs');
             const tabContent = document.getElementById('descriptionTabsContentInner');
             
-            // Add tab to navigation
-            const newTab = document.createElement('li');
-            newTab.className = 'nav-item';
-            newTab.setAttribute('role', 'presentation');
-            newTab.innerHTML = `
-              <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
-                <i class="bi bi-magic"></i> Generated Test Scenarios
-              </button>
-            `;
-            tabList.appendChild(newTab);
-            
-            // Add tab content
-            const newTabContent = document.createElement('div');
-            newTabContent.className = 'tab-pane fade';
-            newTabContent.id = 'generated-test-scenarios-pane';
-            newTabContent.setAttribute('role', 'tabpanel');
-            newTabContent.setAttribute('aria-labelledby', 'generated-test-scenarios-tab');
-            newTabContent.innerHTML = `
-              <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
-                  <i class="bi bi-clipboard"></i>
-                  <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+            // Add tab to navigation if it doesn't exist
+            if (!generatedTab && tabList) {
+              const newTab = document.createElement('li');
+              newTab.className = 'nav-item';
+              newTab.setAttribute('role', 'presentation');
+              newTab.innerHTML = `
+                <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
+                  <i class="bi bi-magic"></i> Generated Test Scenarios
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-                  <i class="bi bi-chat-square-text"></i>
-                  <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
-                  <i class="bi bi-upload"></i>
-                  <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-                </button>
-              </div>
-              <ol id="testScenariosList"></ol>
-            `;
-            tabContent.appendChild(newTabContent);
-            
-            // Initialize the new tab
-            const newTabButton = newTab.querySelector('button');
-            new bootstrap.Tab(newTabButton).show();
-            
-            // Get the newly created list
-            testScenariosList = document.getElementById('testScenariosList');
-            
+              `;
+              tabList.appendChild(newTab);
+              generatedTab = newTab.querySelector('button');
+            }
+
+            // Add tab content if it doesn't exist
+            if (!scenariosPane && tabContent) {
+              const newTabContent = document.createElement('div');
+              newTabContent.className = 'tab-pane fade';
+              newTabContent.id = 'generated-test-scenarios-pane';
+              newTabContent.setAttribute('role', 'tabpanel');
+              newTabContent.setAttribute('aria-labelledby', 'generated-test-scenarios-tab');
+              newTabContent.innerHTML = `
+                <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                  <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
+                    <i class="bi bi-clipboard"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+                    <i class="bi bi-chat-square-text"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
+                    <i class="bi bi-upload"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+                  </button>
+                </div>
+                <ol id="testScenariosList"></ol>
+              `;
+              tabContent.appendChild(newTabContent);
+
+              // Get the newly created pane and list
+              scenariosPane = newTabContent;
+              testScenariosList = newTabContent.querySelector('#testScenariosList');
+            }
+
             // Reattach event handlers for the new buttons
             attachManualPromptHandlers();
-            // The update-ticket-btn is handled by event delegation, so no need to reattach
-          } else {
-            // Clear existing scenarios
-            testScenariosList.innerHTML = '';
-            
-            // Make sure the generated test scenarios tab is active
-            const generatedTab = document.getElementById('generated-test-scenarios-tab');
-            if (generatedTab) {
-              // Use Bootstrap's tab functionality to show the tab
-              const tab = new bootstrap.Tab(generatedTab);
-              tab.show();
+          } else if (testScenariosList && scenariosPane) {
+            // If the list already exists, make sure to remove any placeholder text
+            const placeholder = scenariosPane.querySelector('.text-muted');
+            if (placeholder) {
+              placeholder.remove();
             }
+          }
+
+          // Make sure the generated test scenarios tab is active
+          if (generatedTab) {
+            // Use Bootstrap's tab functionality to show the tab
+            const tab = new bootstrap.Tab(generatedTab);
+            tab.show();
           }
           
           // Filter out any introductory text that's not actually a test scenario
@@ -786,32 +817,24 @@ document.addEventListener('DOMContentLoaded', function () {
                    !scenario.toLowerCase().includes("test scenario");
           });
           
-          // Clear existing scenarios
-          testScenariosList.innerHTML = '';
-          
-          // Add new scenarios
-          filteredScenarios.forEach(scenario => {
-            const li = document.createElement('li');
-            li.textContent = scenario;
-            testScenariosList.appendChild(li);
-          });
+          // Clear existing scenarios and ensure the list exists
+          if (testScenariosList) {
+            testScenariosList.innerHTML = '';
 
-          // Update the Generate button text to show "Regenerate Test Scenarios"
-          const generateBtn = document.getElementById('generateScenariosBtn');
-          if (generateBtn) {
-            const btnText = generateBtn.querySelector('.btn-text');
-            if (btnText) {
-              btnText.textContent = 'Regenerate Test Scenarios';
-            }
+            // Add new scenarios with proper structure for pencil icons
+            filteredScenarios.forEach(scenario => {
+              const li = document.createElement('li');
+              li.innerHTML = `
+                <div class="d-flex align-items-start">
+                  <div class="flex-grow-1">${scenario}</div>
+                  <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Generate test case" data-scenario="${scenario.replace(/"/g, '&quot;')}">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                </div>
+              `;
+              testScenariosList.appendChild(li);
+            });
           }
-
-          // Auto-scroll to the generated test scenarios section
-          setTimeout(() => {
-            const tabContent = document.getElementById('generated-test-scenarios-pane');
-            if (tabContent) {
-              tabContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 100);
         })
         .catch(err => {
           btn.disabled = false;
