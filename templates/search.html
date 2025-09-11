@@ -109,89 +109,75 @@
               </div>
               <div class="collapse show" id="selectedInfoContent">
                 <div class="card-body">
-                  {% if selected.description_html or selected.description or selected.test_scenarios_field %}
-                    <div class="card mt-2">
-                      <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionTabsContent" aria-expanded="false" aria-controls="descriptionTabsContent">
-                          <i class="bi bi-chevron-right" id="descriptionTabsIcon"></i>
-                          Description & Test Scenarios
+                  <!-- Tabs Navigation -->
+                  <ul class="nav nav-tabs mb-3" id="descriptionTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description-pane" type="button" role="tab" aria-controls="description-pane" aria-selected="true">
+                        <i class="bi bi-file-text"></i> Description
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#test-scenarios-pane" type="button" role="tab" aria-controls="test-scenarios-pane" aria-selected="false">
+                        <i class="bi bi-list-check"></i> Test Plan
+                      </button>
+                    </li>
+                    <!-- New Generated Test Scenarios Tab -->
+                    {% if selected.test_scenarios %}
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
+                        <i class="bi bi-magic"></i> Generated Test Scenarios
+                      </button>
+                    </li>
+                    {% endif %}
+                  </ul>
+                  
+                  <!-- Tabs Content -->
+                  <div class="tab-content" id="descriptionTabsContentInner">
+                    <!-- Description Tab -->
+                    <div class="tab-pane fade show active" id="description-pane" role="tabpanel" aria-labelledby="description-tab">
+                      {% if selected.description_html %}
+                        <div>{{ selected.description_html | safe }}</div>
+                      {% elif selected.description %}
+                        <div style="white-space: pre-wrap;">{{ selected.description }}</div>
+                      {% else %}
+                        <div class="text-muted">No description available</div>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Test Scenarios Tab -->
+                    <div class="tab-pane fade" id="test-scenarios-pane" role="tabpanel" aria-labelledby="test-scenarios-tab">
+                      {% if selected.test_scenarios_field %}
+                        <div>{{ selected.test_scenarios_field | safe }}</div>
+                      {% else %}
+                        <div class="text-muted">No test scenarios available</div>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Generated Test Scenarios Tab -->
+                    {% if selected.test_scenarios %}
+                    <div class="tab-pane fade" id="generated-test-scenarios-pane" role="tabpanel" aria-labelledby="generated-test-scenarios-tab">
+                      <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
+                          <i class="bi bi-clipboard"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+                          <i class="bi bi-chat-square-text"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
+                          <i class="bi bi-upload"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
                         </button>
                       </div>
-                      <div class="collapse" id="descriptionTabsContent">
-                        <div class="card-body">
-                          <!-- Tabs Navigation -->
-                          <ul class="nav nav-tabs mb-3" id="descriptionTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                              <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description-pane" type="button" role="tab" aria-controls="description-pane" aria-selected="true">
-                                <i class="bi bi-file-text"></i> Description
-                              </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <button class="nav-link" id="test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#test-scenarios-pane" type="button" role="tab" aria-controls="test-scenarios-pane" aria-selected="false">
-                                <i class="bi bi-list-check"></i> Test Scenarios
-                              </button>
-                            </li>
-                            <!-- New Generated Test Scenarios Tab -->
-                            {% if selected.test_scenarios %}
-                            <li class="nav-item" role="presentation">
-                              <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
-                                <i class="bi bi-magic"></i> Generated Test Scenarios
-                              </button>
-                            </li>
-                            {% endif %}
-                          </ul>
-                          
-                          <!-- Tabs Content -->
-                          <div class="tab-content" id="descriptionTabsContentInner">
-                            <!-- Description Tab -->
-                            <div class="tab-pane fade show active" id="description-pane" role="tabpanel" aria-labelledby="description-tab">
-                              {% if selected.description_html %}
-                                <div>{{ selected.description_html | safe }}</div>
-                              {% elif selected.description %}
-                                <div style="white-space: pre-wrap;">{{ selected.description }}</div>
-                              {% else %}
-                                <div class="text-muted">No description available</div>
-                              {% endif %}
-                            </div>
-                            
-                            <!-- Test Scenarios Tab -->
-                            <div class="tab-pane fade" id="test-scenarios-pane" role="tabpanel" aria-labelledby="test-scenarios-tab">
-                              {% if selected.test_scenarios_field %}
-                                <div>{{ selected.test_scenarios_field | safe }}</div>
-                              {% else %}
-                                <div class="text-muted">No test scenarios available</div>
-                              {% endif %}
-                            </div>
-                            
-                            <!-- Generated Test Scenarios Tab -->
-                            {% if selected.test_scenarios %}
-                            <div class="tab-pane fade" id="generated-test-scenarios-pane" role="tabpanel" aria-labelledby="generated-test-scenarios-tab">
-                              <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                                <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
-                                  <i class="bi bi-clipboard"></i>
-                                  <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-                                  <i class="bi bi-chat-square-text"></i>
-                                  <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
-                                  <i class="bi bi-upload"></i>
-                                  <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-                                </button>
-                              </div>
-                              <ol id="testScenariosList">
-                                {% for scenario in selected.test_scenarios %}
-                                  <li>{{ scenario }}</li>
-                                {% endfor %}
-                              </ol>
-                            </div>
-                            {% endif %}
-                          </div>
-                        </div>
-                      </div>
+                      <ol id="testScenariosList">
+                        {% for scenario in selected.test_scenarios %}
+                          <li>{{ scenario }}</li>
+                        {% endfor %}
+                      </ol>
                     </div>
-                  {% endif %}
+                    {% endif %}
+                  </div>
 
                   {# History Section #}
                   {% if selected.scenario_history %}
