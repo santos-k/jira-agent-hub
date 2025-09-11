@@ -3,3 +3,4 @@ requests>=2.25
 Flask-Session>=0.4
 google-genai>=0.20.0
 jira>=3.0.0
+gunicorn
