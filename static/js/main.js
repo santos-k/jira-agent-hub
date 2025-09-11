@@ -379,9 +379,6 @@ document.addEventListener('DOMContentLoaded', function () {
               <li>
                 <div class="d-flex align-items-start">
                   <div class="flex-grow-1">${scenario}</div>
-                  <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Generate test case" data-scenario="${scenario.replace(/"/g, '&quot;')}">
-                    <i class="bi bi-pencil-square"></i>
-                  </button>
                 </div>
               </li>
             `).join('')}
@@ -393,9 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
           ${selected.generated_test_cases && selected.generated_test_cases.length > 0 ? `
           <ol id="testCasesList">
-            ${selected.generated_test_cases.map(test_case => `
+            ${selected.generated_test_cases.map((test_case, index) => `
               <li class="d-flex align-items-start">
-                <span class="flex-grow-1">${test_case}</span>
+                <span class="flex-grow-1">${index + 1}. ${test_case}</span>
                 <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="${test_case.replace(/"/g, '&quot;')}">
                   <i class="bi bi-pencil-square"></i>
                 </button>
@@ -868,9 +865,6 @@ document.addEventListener('DOMContentLoaded', function () {
               li.innerHTML = `
                 <div class="d-flex align-items-start">
                   <div class="flex-grow-1">${scenario}</div>
-                  <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Generate test case" data-scenario="${scenario.replace(/"/g, '&quot;')}">
-                    <i class="bi bi-pencil-square"></i>
-                  </button>
                 </div>
               `;
               testScenariosList.appendChild(li);
