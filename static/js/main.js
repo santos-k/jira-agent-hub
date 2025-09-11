@@ -498,8 +498,8 @@ document.addEventListener('DOMContentLoaded', function () {
       testCasesPane.appendChild(testCasesList);
     }
 
-    // Only update test cases if we don't have any in the DOM and we have scenarios
-    if (testCasesList.children.length === 0 && scenarios && scenarios.length > 0) {
+    // Always update test cases when scenarios are provided (for both initial generation and regeneration)
+    if (scenarios && scenarios.length > 0) {
       testCasesList.innerHTML = '';
       // Add each scenario as a test case with the same structure as existing test cases
       scenarios.forEach((scenario, index) => {
