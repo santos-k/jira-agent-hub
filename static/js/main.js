@@ -393,9 +393,6 @@ document.addEventListener('DOMContentLoaded', function () {
             ${selected.generated_test_cases.map((test_case, index) => `
               <li class="d-flex align-items-start">
                 <span class="flex-grow-1">${index + 1}. ${test_case}</span>
-                <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="${test_case.replace(/"/g, '&quot;')}">
-                  <i class="bi bi-pencil-square"></i>
-                </button>
               </li>
             `).join('')}
           </ol>
@@ -501,21 +498,49 @@ document.addEventListener('DOMContentLoaded', function () {
       testCasesPane.appendChild(testCasesList);
     }
 
-    // Clear existing test cases and add scenarios as test cases
-    testCasesList.innerHTML = '';
+    // Only update test cases if we don't have any in the DOM and we have scenarios
+    if (testCasesList.children.length === 0 && scenarios && scenarios.length > 0) {
+      testCasesList.innerHTML = '';
+      // Add each scenario as a test case with the same structure as existing test cases
+      scenarios.forEach((scenario, index) => {
+        const li = document.createElement('li');
+        li.className = 'd-flex align-items-start';
+        li.innerHTML = `
+          <span class="flex-grow-1">${index + 1}. ${scenario}</span>
+        `;
+        testCasesList.appendChild(li);
+      });
 
-    // Add each scenario as a test case with the same structure as existing test cases
-    scenarios.forEach(scenario => {
-      const li = document.createElement('li');
-      li.className = 'd-flex align-items-start';
-      li.innerHTML = `
-        <span class="flex-grow-1">${scenario}</span>
-        <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="${scenario.replace(/"/g, '&quot;')}">
-          <i class="bi bi-pencil-square"></i>
-        </button>
-      `;
-      testCasesList.appendChild(li);
-    });
+      // Store the new test cases in backend session for persistence
+      storeTestCasesInBackend(scenarios);
+    }
+  }
+
+  // Function to store test cases in backend session for persistence
+  function storeTestCasesInBackend(testCases) {
+    try {
+      fetch('/api/store_test_cases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ test_cases: testCases })
+      })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          console.log(`Stored ${data.stored_count || testCases.length} test cases in backend session`);
+        } else {
+          console.error('Failed to store test cases in backend:', data.error);
+        }
+      })
+      .catch(err => {
+        console.error('Error storing test cases in backend:', err);
+      });
+    } catch (e) {
+      console.error('Failed to store test cases in backend:', e);
+    }
   }
 
   // Function to handle collapse icon rotation
@@ -1745,8 +1770,14 @@ document.addEventListener('DOMContentLoaded', function () {
       // Toggle inline chat interface
       toggleInlineChat(button);
     } else if (e.target.classList.contains('editScenarioBtn')) {
-      const li = e.target.parentElement;
-      const oldText = li.firstChild.textContent;
+      // Prevent edit functionality for standard scenario items
+      // Only allow editing for items that are explicitly marked as editable
+      const li = e.target.closest('li');
+      if (!li || !li.classList.contains('editable-scenario')) {
+        return;
+      }
+
+      const oldText = li.querySelector('.flex-grow-1').textContent;
       const input = document.createElement('input');
       input.type = 'text';
       input.value = oldText;

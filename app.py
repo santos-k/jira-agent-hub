@@ -422,16 +422,13 @@ def select_ticket():
                 test_scenarios_raw = issue_data.get('fields', {}).get('customfield_11334')
                 test_scenarios_html = ''
                 if test_scenarios_raw:
-                    logger.debug(f"Test scenarios raw data for {key}: {type(test_scenarios_raw)} - {str(test_scenarios_raw)[:200]}...")
                     # Try to get rendered version first
                     rendered_test_scenarios = issue_data.get('renderedFields', {}).get('customfield_11334')
                     if rendered_test_scenarios:
                         test_scenarios_html = rendered_test_scenarios
-                        logger.debug(f"Using rendered test scenarios for {key}: {str(rendered_test_scenarios)[:200]}...")
                     else:
                         # Process the raw content (could be ADF, markdown, or plain text)
                         test_scenarios_html = process_test_scenarios_content(test_scenarios_raw)
-                        logger.debug(f"Processed test scenarios for {key}: {str(test_scenarios_html)[:200]}...")
                 else:
                     logger.debug(f"No test scenarios found for {key}")
             else:
@@ -608,6 +605,8 @@ def refresh():
                     else:
                         # Process the raw content (could be ADF, markdown, or plain text)
                         test_scenarios_html = process_test_scenarios_content(test_scenarios_raw)
+                else:
+                    logger.debug(f"No test scenarios found for {key}")
             else:
                 logger.warning("Failed to refresh issue %s: %s", key, issue_data.get('error'))
                 # Preserve existing description if refresh fails
@@ -893,7 +892,7 @@ def text_to_adf(text):
             
         # Check if this is a list (scenarios)
         lines = paragraph.split('\n')
-        if len(lines) > 1 and any(line.strip().startswith(('1.', '2.', '-', '•', '*')) for line in lines):
+        if len(lines) > 1 and any(line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '-', '•', '*')) for line in lines):
             # Create a bullet list
             list_items = []
             for line in lines:
@@ -1300,6 +1299,35 @@ def expand_ticket_sequence(query):
         return ','.join(expanded_keys)
     
     return query
+
+@app.route('/api/store_test_cases', methods=['POST'])
+def store_test_cases():
+    """Store generated test cases in the backend session for persistence across page refreshes."""
+    try:
+        # Check if user has a selected ticket
+        selected = session.get('selected_ticket', {})
+        if not selected or not selected.get('key'):
+            logger.warning("Store test cases attempted without selected ticket")
+            return jsonify({'success': False, 'error': 'No ticket selected.'}), 400
+
+        # Get test cases from request
+        data = request.get_json() or {}
+        test_cases = data.get('test_cases', [])
+
+        if not isinstance(test_cases, list):
+            logger.warning("Invalid test cases data format")
+            return jsonify({'success': False, 'error': 'Invalid test cases format.'}), 400
+
+        # Store test cases in session
+        selected['generated_test_cases'] = test_cases
+        session['selected_ticket'] = selected
+
+        logger.info(f"Stored {len(test_cases)} test cases for ticket {selected['key']}")
+        return jsonify({'success': True, 'stored_count': len(test_cases)}), 200
+
+    except Exception as e:
+        logger.exception(f"Error storing test cases: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to store test cases.'}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
