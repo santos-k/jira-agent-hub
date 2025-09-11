@@ -339,6 +339,14 @@ document.addEventListener('DOMContentLoaded', function () {
                   <i class="bi bi-list-check"></i> Test Scenarios
                 </button>
               </li>
+              <!-- New Generated Test Scenarios Tab -->
+              ${selected.test_scenarios && selected.test_scenarios.length > 0 ? `
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
+                  <i class="bi bi-magic"></i> Generated Test Scenarios
+                </button>
+              </li>
+              ` : ''}
             </ul>
             
             <!-- Tabs Content -->
@@ -352,6 +360,29 @@ document.addEventListener('DOMContentLoaded', function () {
               <div class="tab-pane fade" id="test-scenarios-pane" role="tabpanel" aria-labelledby="test-scenarios-tab">
                 <div class="test-scenarios-field"></div>
               </div>
+              
+              <!-- Generated Test Scenarios Tab -->
+              ${selected.test_scenarios && selected.test_scenarios.length > 0 ? `
+              <div class="tab-pane fade" id="generated-test-scenarios-pane" role="tabpanel" aria-labelledby="generated-test-scenarios-tab">
+                <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                  <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
+                    <i class="bi bi-clipboard"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+                    <i class="bi bi-chat-square-text"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
+                    <i class="bi bi-upload"></i>
+                    <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+                  </button>
+                </div>
+                <ol id="testScenariosList">
+                  ${selected.test_scenarios.map(scenario => `<li>${scenario}</li>`).join('')}
+                </ol>
+              </div>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -359,34 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (selected.test_scenarios && selected.test_scenarios.length > 0) {
-      infoHtml += `<div class="card mt-2">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#testScenariosContent" aria-expanded="true" aria-controls="testScenariosContent">
-            <i class="bi bi-chevron-down" id="testScenariosIcon"></i>
-            Generated Test Scenarios
-          </button>
-        </div>
-        <div class="collapse show" id="testScenariosContent">
-          <div class="card-body">
-            <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
-                <i class="bi bi-clipboard"></i>
-                <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute manual prompt">
-                <i class="bi bi-chat-square-text"></i>
-                <span class="btn-text d-none d-md-inline ms-1">Execute Manual</span>
-              </button>
-              <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
-                <i class="bi bi-upload"></i>
-                <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-              </button>
-            </div>
-            <ol id="testScenariosList">`;
-      selected.test_scenarios.forEach(scenario => {
-        infoHtml += `<li>${scenario}</li>`;
-      });
-      infoHtml += `</ol></div></div></div>`;
+      // Updated to work with tab structure instead of collapsible section
+      // Remove the old collapsible section code since it's now in the tab
+      // The tab content is already handled in the HTML template above
     }
 
     infoHtml += `</div>
@@ -717,76 +723,40 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
           }
 
-          // Create expandable scenarios section
-          let scenariosHtml = `<div class="card mt-2">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#testScenariosContent" aria-expanded="true" aria-controls="testScenariosContent">
-                <i class="bi bi-chevron-down" id="testScenariosIcon"></i>
-                Generated Test Scenarios
-              </button>
-            </div>
-            <div class="collapse show" id="testScenariosContent">
-              <div class="card-body">
-                <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                  <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
-                    <i class="bi bi-clipboard"></i>
-                    <span class="d-none d-md-inline ms-1">Copy All</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-                    <i class="bi bi-chat-square-text"></i>
-                    <span class="d-none d-md-inline ms-1">Custom Prompt</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
-                    <i class="bi bi-upload"></i>
-                    <span class="d-none d-md-inline ms-1">Update Ticket</span>
-                  </button>
-                </div>
-                <ol id="testScenariosList">`;
-
-          // Filter out any introductory text that's not actually a test scenario
-          const filteredScenarios = data.scenarios.filter(scenario => {
-            // Skip introductory text like "Here are concise, end-to-end test scenarios..."
-            return !scenario.toLowerCase().includes("here are") && 
-                   !scenario.toLowerCase().includes("test scenario");
-          });
-          
-          for (const scenario of filteredScenarios) {
-            scenariosHtml += `<li>${scenario}</li>`;
-          }
-          scenariosHtml += `</ol></div></div></div>`;
-
-          // Remove any previous scenarios section
-          const oldTestCard = selInfo.querySelector('#testScenariosContent');
-          if (oldTestCard && oldTestCard.parentElement) {
-            oldTestCard.parentElement.remove();
-          }
-
-          // Insert the scenarios section
-          const cardBody = selInfo.querySelector('.card-body');
-          if (cardBody) {
-            cardBody.insertAdjacentHTML('beforeend', scenariosHtml);
-          }
-
-          // Attach collapse handlers for the new test scenarios section
-          attachCollapseHandlers();
-          
-          // Auto-scroll to the generated test scenarios section and ensure it's expanded
-          setTimeout(() => {
-            const testScenariosSection = document.getElementById('testScenariosContent');
-            const testScenariosHeader = testScenariosSection ? testScenariosSection.previousElementSibling : null;
+          // Update the generated test scenarios tab content
+          const testScenariosList = document.getElementById('testScenariosList');
+          if (testScenariosList) {
+            // Clear existing scenarios
+            testScenariosList.innerHTML = '';
             
-            if (testScenariosSection && testScenariosHeader) {
-              // Ensure the section is expanded
-              if (!testScenariosSection.classList.contains('show')) {
-                // Trigger the collapse toggle
-                const toggleButton = testScenariosHeader.querySelector('[data-bs-toggle="collapse"]');
-                if (toggleButton) {
-                  toggleButton.click();
-                }
-              }
-              
-              // Scroll to the section
-              testScenariosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Filter out any introductory text that's not actually a test scenario
+            const filteredScenarios = data.scenarios.filter(scenario => {
+              // Skip introductory text like "Here are concise, end-to-end test scenarios..."
+              return !scenario.toLowerCase().includes("here are") && 
+                     !scenario.toLowerCase().includes("test scenario");
+            });
+            
+            // Add new scenarios
+            filteredScenarios.forEach(scenario => {
+              const li = document.createElement('li');
+              li.textContent = scenario;
+              testScenariosList.appendChild(li);
+            });
+            
+            // Make sure the generated test scenarios tab is active
+            const generatedTab = document.getElementById('generated-test-scenarios-tab');
+            if (generatedTab) {
+              // Use Bootstrap's tab functionality to show the tab
+              const tab = new bootstrap.Tab(generatedTab);
+              tab.show();
+            }
+          }
+
+          // Auto-scroll to the generated test scenarios section
+          setTimeout(() => {
+            const tabContent = document.getElementById('generated-test-scenarios-pane');
+            if (tabContent) {
+              tabContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }, 100);
         })
@@ -832,6 +802,7 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    // Updated to find test scenarios list within the tab structure
     const testScenariosList = document.getElementById('testScenariosList');
     if (!testScenariosList) {
       showStickyAlert('No test scenarios found. Please generate test scenarios first.', 'warning');
@@ -1546,22 +1517,20 @@ document.addEventListener('DOMContentLoaded', function () {
           });
           
           // Auto-scroll to the generated test scenarios section and ensure it's expanded
+          // Updated to work with tab structure
           setTimeout(() => {
-            const testScenariosSection = document.getElementById('testScenariosContent');
-            const testScenariosHeader = testScenariosSection ? testScenariosSection.previousElementSibling : null;
+            // First make sure the tab is active
+            const generatedTab = document.getElementById('generated-test-scenarios-tab');
+            if (generatedTab) {
+              // Use Bootstrap's tab functionality to show the tab
+              const tab = new bootstrap.Tab(generatedTab);
+              tab.show();
+            }
             
-            if (testScenariosSection && testScenariosHeader) {
-              // Ensure the section is expanded
-              if (!testScenariosSection.classList.contains('show')) {
-                // Trigger the collapse toggle
-                const toggleButton = testScenariosHeader.querySelector('[data-bs-toggle="collapse"]');
-                if (toggleButton) {
-                  toggleButton.click();
-                }
-              }
-              
-              // Scroll to the section
-              testScenariosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Scroll to the tab content
+            const tabContent = document.getElementById('generated-test-scenarios-pane');
+            if (tabContent) {
+              tabContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }, 100);
         }
