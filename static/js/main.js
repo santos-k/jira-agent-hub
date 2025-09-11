@@ -391,20 +391,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <!-- Generated Test Cases Tab - Always show with conditional content -->
         <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
-          <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-            <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
-              <i class="bi bi-clipboard"></i>
-              <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-              <i class="bi bi-chat-square-text"></i>
-              <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
-              <i class="bi bi-upload"></i>
-              <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-            </button>
-          </div>
           ${selected.generated_test_cases && selected.generated_test_cases.length > 0 ? `
           <ol id="testCasesList">
             ${selected.generated_test_cases.map(test_case => `
