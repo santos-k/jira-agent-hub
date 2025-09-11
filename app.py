@@ -269,6 +269,10 @@ def search():
 
     query = request.form.get("query", "").strip()
     logger.debug("Search requested: %s", query)
+    
+    # Handle the special case of comma-separated numbers after a prefix (e.g., "hub-1,2,3,4")
+    query = expand_ticket_sequence(query)
+    
     if not query:
         # If query is empty, fetch all tickets assigned to current user with allowed issue types
         jql = "assignee = currentUser() AND issuetype in (Story, Defect, Bug)"
@@ -468,6 +472,9 @@ def refresh():
         logger.warning("Refresh attempted without Jira connection")
         return jsonify({'success': False, 'message': 'Not connected to Jira.'}), 403
     last_query = session.get('last_query', '').strip()
+    
+    # Handle the special case of comma-separated numbers after a prefix (e.g., "hub-1,2,3,4")
+    last_query = expand_ticket_sequence(last_query)
     
     # Re-run search logic with same logic as search endpoint
     if not last_query:
@@ -1257,6 +1264,34 @@ def generate_scenarios_with_ai(description, prompt=None):
                 if len(line) > 10 and not line.lower().startswith(("note:", "important:", "reminder:")):
                     scenarios.append(line)
     return scenarios, None
+
+def expand_ticket_sequence(query):
+    """
+    Expand ticket sequences like "hub-1,2,3,4" to "hub-1,hub-2,hub-3,hub-4"
+    
+    Args:
+        query (str): The search query
+        
+    Returns:
+        str: The expanded query
+    """
+    if not query:
+        return query
+        
+    # Pattern to match: prefix followed by numbers separated by commas
+    # e.g., "hub-1,2,3,4" or "ABC-10,15,20"
+    pattern = r'^([A-Za-z0-9]+-)(\d+(?:,\d+)*)$'
+    match = re.match(pattern, query.strip())
+    
+    if match:
+        prefix = match.group(1)  # e.g., "hub-"
+        numbers = match.group(2).split(',')  # e.g., ["1", "2", "3", "4"]
+        
+        # Expand to full ticket keys
+        expanded_keys = [f"{prefix}{num}" for num in numbers]
+        return ','.join(expanded_keys)
+    
+    return query
 
 if __name__ == "__main__":
     app.run(debug=True)
