@@ -620,13 +620,21 @@ def refresh():
             description_text = selected.get('description', '')
             description_html = selected.get('description_html', '')
             test_scenarios_html = selected.get('test_scenarios_field', '')
+        # Preserve generated test scenarios if they exist
+        existing_test_scenarios = selected.get('test_scenarios', [])
+        existing_scenario_history = selected.get('scenario_history', [])
+        existing_last_prompt = selected.get('last_prompt', '')
+        
         selected_info = {
             'key': key,
             'url': url,
             'summary': summary,
             'description': description_text,
             'description_html': description_html,
-            'test_scenarios_field': test_scenarios_html
+            'test_scenarios_field': test_scenarios_html,
+            'test_scenarios': existing_test_scenarios,
+            'scenario_history': existing_scenario_history,
+            'last_prompt': existing_last_prompt
         }
         session['selected_ticket'] = selected_info
     logger.info("Refresh completed: %d results", len(results))

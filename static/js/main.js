@@ -761,12 +761,24 @@ document.addEventListener('DOMContentLoaded', function () {
                    !scenario.toLowerCase().includes("test scenario");
           });
           
+          // Clear existing scenarios
+          testScenariosList.innerHTML = '';
+          
           // Add new scenarios
           filteredScenarios.forEach(scenario => {
             const li = document.createElement('li');
             li.textContent = scenario;
             testScenariosList.appendChild(li);
           });
+
+          // Update the Generate button text to show "Regenerate Test Scenarios"
+          const generateBtn = document.getElementById('generateScenariosBtn');
+          if (generateBtn) {
+            const btnText = generateBtn.querySelector('.btn-text');
+            if (btnText) {
+              btnText.textContent = 'Regenerate Test Scenarios';
+            }
+          }
 
           // Auto-scroll to the generated test scenarios section
           setTimeout(() => {
@@ -1518,10 +1530,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const testScenariosList = document.getElementById('testScenariosList');
         if (testScenariosList) {
           // Clear existing scenarios but keep controls
-          const controlsDiv = testScenariosList.querySelector('.scenario-controls');
+          const scenarioControls = testScenariosList.querySelector('.scenario-controls');
           testScenariosList.innerHTML = '';
-          if (controlsDiv) {
-            testScenariosList.appendChild(controlsDiv);
+          if (scenarioControls) {
+            testScenariosList.appendChild(scenarioControls);
           }
           
           // Add new scenarios with strict formatting
@@ -1554,10 +1566,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update the Generate button text to show "Regenerate Test Scenarios"
         const generateBtn = document.getElementById('generateScenariosBtn');
         if (generateBtn) {
-          const btnText = generateBtn.querySelector('span');
+          const btnText = generateBtn.querySelector('.btn-text');
           if (btnText) {
             btnText.textContent = 'Regenerate Test Scenarios';
           }
+          // Also update the title attribute
+          generateBtn.title = 'Regenerate test scenarios';
         }
         
         // Scroll to bottom
