@@ -331,14 +331,18 @@ document.addEventListener('DOMContentLoaded', function () {
             <i class="bi bi-list-check"></i> Test Plan
           </button>
         </li>
-        <!-- New Generated Test Scenarios Tab -->
-        ${selected.test_scenarios && selected.test_scenarios.length > 0 ? `
+        <!-- Always show Generated Test Scenarios Tab -->
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
             <i class="bi bi-magic"></i> Generated Test Scenarios
           </button>
         </li>
-        ` : ''}
+        <!-- Always show Generated Test Cases Tab -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="generated-test-cases-tab" data-bs-toggle="tab" data-bs-target="#generated-test-cases-pane" type="button" role="tab" aria-controls="generated-test-cases-pane" aria-selected="false">
+            <i class="bi bi-file-earmark-code"></i> Generated Test Cases
+          </button>
+        </li>
       </ul>
       
       <!-- Tabs Content -->
@@ -353,8 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="test-scenarios-field"></div>
         </div>
         
-        <!-- Generated Test Scenarios Tab -->
-        ${selected.test_scenarios && selected.test_scenarios.length > 0 ? `
+        <!-- Generated Test Scenarios Tab - Always show with conditional content -->
         <div class="tab-pane fade" id="generated-test-scenarios-pane" role="tabpanel" aria-labelledby="generated-test-scenarios-tab">
           <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
             <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
@@ -370,18 +373,54 @@ document.addEventListener('DOMContentLoaded', function () {
               <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
             </button>
           </div>
+          ${selected.test_scenarios && selected.test_scenarios.length > 0 ? `
           <ol id="testScenariosList">
-            ${selected.test_scenarios.map(scenario => `<li>${scenario}</li>`).join('')}
+            ${selected.test_scenarios.map(scenario => `
+              <li>
+                <div class="d-flex align-items-start">
+                  <div class="flex-grow-1">${scenario}</div>
+                  <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Generate test case" data-scenario="${scenario.replace(/"/g, '&quot;')}">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                </div>
+              </li>
+            `).join('')}
           </ol>
+          ` : `<div class="text-muted">No generated test scenarios yet. Click "Generate Test Scenarios" to create them.</div>`}
         </div>
-        ` : ''}
+
+        <!-- Generated Test Cases Tab - Always show with conditional content -->
+        <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
+          <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+            <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
+              <i class="bi bi-clipboard"></i>
+              <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+              <i class="bi bi-chat-square-text"></i>
+              <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
+              <i class="bi bi-upload"></i>
+              <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+            </button>
+          </div>
+          ${selected.generated_test_cases && selected.generated_test_cases.length > 0 ? `
+          <ol id="testCasesList">
+            ${selected.generated_test_cases.map(test_case => `
+              <li class="d-flex align-items-start">
+                <span class="flex-grow-1">${test_case}</span>
+                <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="${test_case.replace(/"/g, '&quot;')}">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+              </li>
+            `).join('')}
+          </ol>
+          ` : `<div class="text-muted">No generated test cases yet. Click the pencil icon next to a test scenario to generate a test case.</div>`}
+        </div>
       </div>`;
 
 
-
-    infoHtml += `</div>
-      </div>
-    </div>`;
 
     selInfo.innerHTML = infoHtml;
 
