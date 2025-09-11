@@ -193,41 +193,6 @@
                     </div>
                   {% endif %}
 
-                  {# Test Scenarios Section #}
-                  {% if selected.test_scenarios %}
-                    <div class="card mt-2">
-                      <div class="card-header d-flex justify-content-between align-items-center">
-                        <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#testScenariosContent" aria-expanded="true" aria-controls="testScenariosContent">
-                          <i class="bi bi-chevron-down" id="testScenariosIcon"></i>
-                          Generated Test Scenarios
-                        </button>
-                      </div>
-                      <div class="collapse show" id="testScenariosContent">
-                        <div class="card-body">
-                          <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
-                            <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all scenarios">
-                              <i class="bi bi-clipboard"></i>
-                              <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
-                              <i class="bi bi-chat-square-text"></i>
-                              <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test scenarios">
-                              <i class="bi bi-upload"></i>
-                              <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
-                            </button>
-                          </div>
-                          <ol id="testScenariosList">
-                            {% for scenario in selected.test_scenarios %}
-                              <li>{{ scenario }}</li>
-                            {% endfor %}
-                          </ol>
-                        </div>
-                      </div>
-                    </div>
-                  {% endif %}
-
                   {# History Section #}
                   {% if selected.scenario_history %}
                     <div class="card mt-2">
