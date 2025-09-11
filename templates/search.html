@@ -121,14 +121,16 @@
                         <i class="bi bi-list-check"></i> Test Plan
                       </button>
                     </li>
-                    <!-- New Generated Test Scenarios Tab -->
-                    {% if selected.test_scenarios %}
                     <li class="nav-item" role="presentation">
                       <button class="nav-link" id="generated-test-scenarios-tab" data-bs-toggle="tab" data-bs-target="#generated-test-scenarios-pane" type="button" role="tab" aria-controls="generated-test-scenarios-pane" aria-selected="false">
                         <i class="bi bi-magic"></i> Generated Test Scenarios
                       </button>
                     </li>
-                    {% endif %}
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="generated-test-cases-tab" data-bs-toggle="tab" data-bs-target="#generated-test-cases-pane" type="button" role="tab" aria-controls="generated-test-cases-pane" aria-selected="false">
+                        <i class="bi bi-file-earmark-code"></i> Generated Test Cases
+                      </button>
+                    </li>
                   </ul>
                   
                   <!-- Tabs Content -->
@@ -182,6 +184,36 @@
                   {# History Section #}
                   {% if selected.scenario_history %}
                     <div class="card mt-2">
+
+                    <!-- Generated Test Cases Tab -->
+                    {% if selected.generated_test_cases %}
+                    <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
+                      <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
+                          <i class="bi bi-clipboard"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+                          <i class="bi bi-chat-square-text"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
+                          <i class="bi bi-upload"></i>
+                          <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+                        </button>
+                      </div>
+                      <ol id="testCasesList">
+                        {% for test_case in selected.generated_test_cases %}
+                          <li class="d-flex align-items-start">
+                            <span class="flex-grow-1">{{ test_case }}</span>
+                            <button class="btn btn-sm btn-outline-secondary ms-2 generate-test-case-btn" title="Edit test case" data-scenario="{{ test_case|e }}">
+                              <i class="bi bi-pencil-square"></i>
+                            </button>
+                          </li>
+                        {% endfor %}
+                      </ol>
+                    </div>
+                    {% endif %}
                       <div class="card-header d-flex justify-content-between align-items-center">
                         <button class="btn btn-link text-start p-0 text-decoration-none fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#scenarioHistoryContent" aria-expanded="false" aria-controls="scenarioHistoryContent">
                           <i class="bi bi-chevron-right" id="scenarioHistoryIcon"></i>
