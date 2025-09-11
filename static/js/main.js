@@ -480,6 +480,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Function to sync test scenarios to test cases tab
+  function syncScenariosToTestCases(scenarios) {
+    // Find or create test cases list
+    let testCasesList = document.getElementById('testCasesList');
+    let testCasesPane = document.getElementById('generated-test-cases-pane');
+
+    if (!testCasesPane) {
+      console.error('Test cases pane not found');
+      return;
+    }
+
+    // Clear existing placeholder text if it exists
+    const placeholder = testCasesPane.querySelector('.text-muted');
+    if (placeholder) {
+      placeholder.remove();
+    }
+
+    // Create test cases list if it doesn't exist
+    if (!testCasesList) {
+      testCasesList = document.createElement('ol');
+      testCasesList.id = 'testCasesList';
+      testCasesPane.appendChild(testCasesList);
+    }
+
+    // Clear existing test cases and add scenarios as test cases
+    testCasesList.innerHTML = '';
+
+    // Add each scenario as a test case with the same structure as existing test cases
+    scenarios.forEach(scenario => {
+      const li = document.createElement('li');
+      li.className = 'd-flex align-items-start';
+      li.innerHTML = `
+        <span class="flex-grow-1">${scenario}</span>
+        <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="${scenario.replace(/"/g, '&quot;')}">
+          <i class="bi bi-pencil-square"></i>
+        </button>
+      `;
+      testCasesList.appendChild(li);
+    });
+  }
+
   // Function to handle collapse icon rotation
   function attachCollapseHandlers() {
     // Handle selectedInfo collapse
@@ -834,6 +875,9 @@ document.addEventListener('DOMContentLoaded', function () {
               `;
               testScenariosList.appendChild(li);
             });
+
+            // Sync scenarios to test cases tab
+            syncScenariosToTestCases(filteredScenarios);
           }
         })
         .catch(err => {
