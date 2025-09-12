@@ -2134,3 +2134,273 @@ a:hover {
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+/* Master-Detail Split View for Test Cases */
+.test-case-split-view {
+  display: flex;
+  gap: 1.5rem;
+  height: 100%;
+  min-height: 400px;
+}
+
+.test-case-master {
+  flex: 0 0 200px; /* Reduced width from 250px to 200px */
+  padding-right: 1rem; /* Add padding to prevent items from touching separator */
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.test-case-master .list-group-item {
+  border: none;
+  border-radius: var(--border-radius-md) !important;
+  margin: 0 0 0.5rem 0; /* Equal margin on both sides (0) with bottom spacing */
+  background: var(--bg-surface-secondary) !important;
+  color: var(--text-primary) !important;
+  transition: var(--transition-fast);
+  cursor: pointer;
+  padding: 0.75rem 1rem; /* Equal padding on both sides */
+  font-weight: 500;
+  text-align: center; /* Center text for better appearance */
+}
+
+.test-case-master .list-group-item:hover {
+  background: rgba(102, 126, 234, 0.15) !important;
+  transform: translateX(4px);
+}
+
+.test-case-master .list-group-item.active {
+  background: var(--primary-gradient) !important;
+  color: white !important;
+  border-left: 3px solid white;
+}
+
+.test-case-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.test-case-detail-content {
+  height: 100%;
+}
+
+.test-case-text {
+  background: var(--bg-surface-secondary) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;
+  min-height: 200px;
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.additional-notes-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.additional-notes-textarea {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+  color: var(--text-primary) !important;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.additional-notes-textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  background: var(--bg-surface) !important;
+}
+
+/* Smaller action buttons for test cases */
+.generate-test-case-btn,
+.copy-test-case-btn,
+.create-ticket-btn,
+.add-notes-btn {
+  padding: 0.5rem 0.75rem; /* Equal padding on both sides */
+  font-size: 0.85rem; /* Smaller font size */
+  border-radius: var(--border-radius-sm); /* Smaller border radius */
+  min-height: 36px; /* Consistent height */
+  margin: 0; /* Ensure no default margins interfere */
+}
+
+/* Responsive adjustments for Master-Detail Split View */
+@media (max-width: 768px) {
+  .test-case-split-view {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .test-case-master {
+    flex: 0 0 auto;
+    padding-right: 0; /* Remove padding on mobile */
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .test-case-detail {
+    padding: 0.5rem;
+  }
+  
+  .test-case-text {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .additional-notes-section {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+  }
+  
+  /* Even smaller buttons on mobile */
+  .generate-test-case-btn,
+  .copy-test-case-btn,
+  .create-ticket-btn,
+  .add-notes-btn {
+    padding: 0.4rem 0.6rem; /* Equal padding on both sides */
+    font-size: 0.8rem;
+    min-height: 32px;
+    margin: 0; /* Ensure no default margins interfere */
+  }
+}
+
+/* Action button styles for test cases */
+.generate-test-case-btn:hover,
+.copy-test-case-btn:hover,
+.create-ticket-btn:hover,
+.add-notes-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.generate-test-case-btn:active,
+.copy-test-case-btn:active,
+.create-ticket-btn:active,
+.add-notes-btn:active {
+  transform: translateY(0);
+}
+
+/* Modal for additional notes */
+.modal-notes {
+  display: none;
+  position: fixed;
+  z-index: 1050;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  backdrop-filter: blur(3px);
+}
+
+.modal-notes-content {
+  background: var(--bg-surface) !important;
+  margin: 10% auto;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  width: 90%;
+  max-width: 600px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.modal-notes-header {
+  padding: 1.25rem 1.5rem;
+  background: var(--primary-gradient) !important;
+  color: white !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-notes-header h5 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.modal-notes-close {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.modal-notes-close:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.1);
+}
+
+.modal-notes-body {
+  padding: 1.5rem;
+}
+
+.modal-notes-textarea {
+  width: 100%;
+  min-height: 150px;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+  color: var(--text-primary) !important;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  margin-bottom: 1rem;
+}
+
+.modal-notes-textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  background: var(--bg-surface) !important;
+  outline: none;
+}
+
+.modal-notes-footer {
+  padding: 1rem 1.5rem;
+  background: var(--bg-surface-secondary) !important;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Responsive adjustments for notes modal */
+@media (max-width: 768px) {
+  .modal-notes-content {
+    margin: 5% auto;
+    width: 95%;
+  }
+  
+  .modal-notes-header,
+  .modal-notes-body,
+  .modal-notes-footer {
+    padding: 1rem;
+  }
+  
+  .modal-notes-header h5 {
+    font-size: 1rem;
+  }
+}
+

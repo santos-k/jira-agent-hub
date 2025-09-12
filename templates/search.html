@@ -223,16 +223,72 @@
                         </button>
                       </div>
                       {% if selected.generated_test_cases %}
-                        <ol id="testCasesList">
-                          {% for test_case in selected.generated_test_cases %}
-                            <li class="d-flex align-items-start">
-                              <span class="flex-grow-1">{{ test_case }}</span>
-                              <button class="btn btn-sm btn-outline-secondary ms-2 edit-test-case-btn" title="Edit test case" data-testcase="{{ test_case|e }}">
-                                <i class="bi bi-pencil-square"></i>
-                              </button>
-                            </li>
-                          {% endfor %}
-                        </ol>
+                        <!-- Master-Detail Split View for test cases -->
+                        <div class="test-case-split-view">
+                          <!-- Master List (Left Panel) -->
+                          <div class="test-case-master">
+                            <div class="list-group" id="testCaseList">
+                              {% for test_case in selected.generated_test_cases %}
+                                <button type="button" 
+                                        class="list-group-item list-group-item-action {% if loop.index == 1 %}active{% endif %}" 
+                                        id="test-case-{{ loop.index }}-list" 
+                                        data-test-case-index="{{ loop.index }}">
+                                  Test Case {{ loop.index }}
+                                </button>
+                              {% endfor %}
+                            </div>
+                          </div>
+                          
+                          <!-- Detail View (Right Panel) -->
+                          <div class="test-case-detail">
+                            {% for test_case in selected.generated_test_cases %}
+                              <div class="test-case-detail-content {% if loop.index != 1 %}d-none{% endif %}" 
+                                   id="test-case-{{ loop.index }}-detail">
+                                <!-- Action Buttons -->
+                                <div class="d-flex justify-content-end mb-2 gap-2 flex-wrap">
+                                  <button class="btn btn-sm btn-outline-primary action-btn generate-test-case-btn" 
+                                          title="Generate Test Case" 
+                                          data-test-case-index="{{ loop.index }}">
+                                    <i class="bi bi-magic"></i>
+                                    <span class="btn-text d-none d-md-inline ms-1">Generate</span>
+                                  </button>
+                                  <button class="btn btn-sm btn-outline-secondary action-btn copy-test-case-btn" 
+                                          title="Copy Test Case" 
+                                          data-test-case-index="{{ loop.index }}">
+                                    <i class="bi bi-clipboard"></i>
+                                    <span class="btn-text d-none d-md-inline ms-1">Copy</span>
+                                  </button>
+                                  <button class="btn btn-sm btn-outline-success action-btn create-ticket-btn" 
+                                          title="Create Ticket" 
+                                          data-test-case-index="{{ loop.index }}">
+                                    <i class="bi bi-ticket-detailed"></i>
+                                    <span class="btn-text d-none d-md-inline ms-1">Ticket</span>
+                                  </button>
+                                  <button class="btn btn-sm btn-outline-info action-btn add-notes-btn" 
+                                          title="Add Notes" 
+                                          data-test-case-index="{{ loop.index }}">
+                                    <i class="bi bi-stickies"></i>
+                                    <span class="btn-text d-none d-md-inline ms-1">Notes</span>
+                                  </button>
+                                </div>
+                                
+                                <!-- Test Case Text -->
+                                <div class="test-case-text mb-3">
+                                  {{ test_case }}
+                                </div>
+                                
+                                <!-- Additional Notes Section -->
+                                <div class="additional-notes-section">
+                                  <label for="additional-notes-{{ loop.index }}" class="form-label fw-bold">Additional Notes:</label>
+                                  <textarea class="form-control additional-notes-textarea" 
+                                            id="additional-notes-{{ loop.index }}" 
+                                            rows="3" 
+                                            placeholder="Enter additional notes, test steps, or details here...">{{ test_case.notes or '' }}</textarea>
+                                </div>
+                              </div>
+                            {% endfor %}
+                          </div>
+                        </div>
                       {% else %}
                         <div class="text-muted">No generated test cases yet. Click the pencil icon next to a test scenario to generate a test case.</div>
                       {% endif %}

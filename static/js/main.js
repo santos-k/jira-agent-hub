@@ -389,18 +389,75 @@ document.addEventListener('DOMContentLoaded', function () {
         <!-- Generated Test Cases Tab - Always show with conditional content -->
         <div class="tab-pane fade" id="generated-test-cases-pane" role="tabpanel" aria-labelledby="generated-test-cases-tab">
           ${selected.generated_test_cases && selected.generated_test_cases.length > 0 ? `
-          <ol id="testCasesList">
-            ${selected.generated_test_cases.map((test_case, index) => `
-              <li class="d-flex align-items-start">
-                <span class="flex-grow-1">${index + 1}. ${test_case}</span>
-              </li>
-            `).join('')}
-          </ol>
+          <!-- Master-Detail Split View for test cases -->
+          <div class="test-case-split-view">
+            <!-- Master List (Left Panel) -->
+            <div class="test-case-master">
+              <div class="list-group" id="testCaseList">
+                ${selected.generated_test_cases.map((test_case, index) => `
+                  <button type="button" 
+                          class="list-group-item list-group-item-action ${index === 0 ? 'active' : ''}" 
+                          id="test-case-${index + 1}-list" 
+                          data-test-case-index="${index + 1}">
+                    Test Case ${index + 1}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+            
+            <!-- Detail View (Right Panel) -->
+            <div class="test-case-detail">
+              ${selected.generated_test_cases.map((test_case, index) => `
+                <div class="test-case-detail-content ${index !== 0 ? 'd-none' : ''}" 
+                     id="test-case-${index + 1}-detail">
+                  <!-- Action Buttons -->
+                  <div class="d-flex justify-content-end mb-2 gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-primary action-btn generate-test-case-btn" 
+                            title="Generate Test Case" 
+                            data-test-case-index="${index + 1}">
+                      <i class="bi bi-magic"></i>
+                      <span class="btn-text d-none d-md-inline ms-1">Generate</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary action-btn copy-test-case-btn" 
+                            title="Copy Test Case" 
+                            data-test-case-index="${index + 1}">
+                      <i class="bi bi-clipboard"></i>
+                      <span class="btn-text d-none d-md-inline ms-1">Copy</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success action-btn create-ticket-btn" 
+                            title="Create Ticket" 
+                            data-test-case-index="${index + 1}">
+                      <i class="bi bi-ticket-detailed"></i>
+                      <span class="btn-text d-none d-md-inline ms-1">Ticket</span>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info action-btn add-notes-btn" 
+                            title="Add Notes" 
+                            data-test-case-index="${index + 1}">
+                      <i class="bi bi-stickies"></i>
+                      <span class="btn-text d-none d-md-inline ms-1">Notes</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Test Case Text -->
+                  <div class="test-case-text mb-3">
+                    ${test_case}
+                  </div>
+                  
+                  <!-- Additional Notes Section -->
+                  <div class="additional-notes-section">
+                    <label for="additional-notes-${index + 1}" class="form-label fw-bold">Additional Notes:</label>
+                    <textarea class="form-control additional-notes-textarea" 
+                              id="additional-notes-${index + 1}" 
+                              rows="3" 
+                              placeholder="Enter additional notes, test steps, or details here...">${test_case.notes || ''}</textarea>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
           ` : `<div class="text-muted">No generated test cases yet. Click the pencil icon next to a test scenario to generate a test case.</div>`}
         </div>
       </div>`;
-
-
 
     selInfo.innerHTML = infoHtml;
 
@@ -474,10 +531,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Function to sync test scenarios to test cases tab
+  // Function to sync test scenarios to test cases tab with Master-Detail Split View
   function syncScenariosToTestCases(scenarios) {
     // Find or create test cases list
-    let testCasesList = document.getElementById('testCasesList');
     let testCasesPane = document.getElementById('generated-test-cases-pane');
 
     if (!testCasesPane) {
@@ -491,29 +547,331 @@ document.addEventListener('DOMContentLoaded', function () {
       placeholder.remove();
     }
 
-    // Create test cases list if it doesn't exist
-    if (!testCasesList) {
-      testCasesList = document.createElement('ol');
-      testCasesList.id = 'testCasesList';
-      testCasesPane.appendChild(testCasesList);
-    }
-
-    // Always update test cases when scenarios are provided (for both initial generation and regeneration)
+    // Create Master-Detail Split View for test cases
     if (scenarios && scenarios.length > 0) {
-      testCasesList.innerHTML = '';
-      // Add each scenario as a test case with the same structure as existing test cases
+      // Create the split view container
+      const splitView = document.createElement('div');
+      splitView.className = 'test-case-split-view';
+      
+      // Create master list (left panel)
+      const masterPanel = document.createElement('div');
+      masterPanel.className = 'test-case-master';
+      
+      const listGroup = document.createElement('div');
+      listGroup.className = 'list-group';
+      listGroup.id = 'testCaseList';
+      
+      // Create detail view (right panel)
+      const detailPanel = document.createElement('div');
+      detailPanel.className = 'test-case-detail';
+      
+      // Add each scenario to the master list and create detail views
       scenarios.forEach((scenario, index) => {
-        const li = document.createElement('li');
-        li.className = 'd-flex align-items-start';
-        li.innerHTML = `
-          <span class="flex-grow-1">${index + 1}. ${scenario}</span>
-        `;
-        testCasesList.appendChild(li);
+        // Create master list item
+        const listItem = document.createElement('button');
+        listItem.type = 'button';
+        listItem.className = `list-group-item list-group-item-action ${index === 0 ? 'active' : ''}`;
+        listItem.id = `test-case-${index + 1}-list`;
+        listItem.setAttribute('data-test-case-index', index + 1);
+        listItem.textContent = `Test Case ${index + 1}`;
+        
+        // Add click event to switch detail views
+        listItem.addEventListener('click', function() {
+          // Remove active class from all list items
+          const allListItems = listGroup.querySelectorAll('.list-group-item');
+          allListItems.forEach(item => item.classList.remove('active'));
+          
+          // Add active class to clicked item
+          this.classList.add('active');
+          
+          // Hide all detail views
+          const allDetailViews = detailPanel.querySelectorAll('.test-case-detail-content');
+          allDetailViews.forEach(view => view.classList.add('d-none'));
+          
+          // Show selected detail view
+          const selectedDetailView = document.getElementById(`test-case-${index + 1}-detail`);
+          if (selectedDetailView) {
+            selectedDetailView.classList.remove('d-none');
+          }
+        });
+        
+        listGroup.appendChild(listItem);
+        
+        // Create detail view
+        const detailView = document.createElement('div');
+        detailView.className = `test-case-detail-content ${index !== 0 ? 'd-none' : ''}`;
+        detailView.id = `test-case-${index + 1}-detail`;
+        
+        // Action buttons with smaller size
+        const actionButtons = document.createElement('div');
+        actionButtons.className = 'd-flex justify-content-end mb-2 gap-2 flex-wrap';
+        
+        const generateBtn = document.createElement('button');
+        generateBtn.className = 'btn btn-sm btn-outline-primary action-btn generate-test-case-btn';
+        generateBtn.title = 'Generate Test Case';
+        generateBtn.setAttribute('data-test-case-index', index + 1);
+        generateBtn.innerHTML = '<i class="bi bi-magic"></i> <span class="btn-text d-none d-md-inline ms-1">Generate</span>';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-sm btn-outline-secondary action-btn copy-test-case-btn';
+        copyBtn.title = 'Copy Test Case';
+        copyBtn.setAttribute('data-test-case-index', index + 1);
+        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i> <span class="btn-text d-none d-md-inline ms-1">Copy</span>';
+        
+        const createTicketBtn = document.createElement('button');
+        createTicketBtn.className = 'btn btn-sm btn-outline-success action-btn create-ticket-btn';
+        createTicketBtn.title = 'Create Ticket';
+        createTicketBtn.setAttribute('data-test-case-index', index + 1);
+        createTicketBtn.innerHTML = '<i class="bi bi-ticket-detailed"></i> <span class="btn-text d-none d-md-inline ms-1">Ticket</span>';
+        
+        const addNotesBtn = document.createElement('button');
+        addNotesBtn.className = 'btn btn-sm btn-outline-info action-btn add-notes-btn';
+        addNotesBtn.title = 'Add Notes';
+        addNotesBtn.setAttribute('data-test-case-index', index + 1);
+        addNotesBtn.innerHTML = '<i class="bi bi-stickies"></i> <span class="btn-text d-none d-md-inline ms-1">Notes</span>';
+        
+        actionButtons.appendChild(generateBtn);
+        actionButtons.appendChild(copyBtn);
+        actionButtons.appendChild(createTicketBtn);
+        actionButtons.appendChild(addNotesBtn);
+        
+        // Test case text
+        const testCaseText = document.createElement('div');
+        testCaseText.className = 'test-case-text mb-3';
+        testCaseText.textContent = scenario;
+        
+        // Additional notes section
+        const notesSection = document.createElement('div');
+        notesSection.className = 'additional-notes-section';
+        
+        const notesLabel = document.createElement('label');
+        notesLabel.className = 'form-label fw-bold';
+        notesLabel.setAttribute('for', `additional-notes-${index + 1}`);
+        notesLabel.textContent = 'Additional Notes:';
+        
+        const notesTextarea = document.createElement('textarea');
+        notesTextarea.className = 'form-control additional-notes-textarea';
+        notesTextarea.id = `additional-notes-${index + 1}`;
+        notesTextarea.rows = 3;
+        notesTextarea.placeholder = 'Enter additional notes, test steps, or details here...';
+        
+        notesSection.appendChild(notesLabel);
+        notesSection.appendChild(notesTextarea);
+        
+        // Assemble detail view
+        detailView.appendChild(actionButtons);
+        detailView.appendChild(testCaseText);
+        detailView.appendChild(notesSection);
+        
+        detailPanel.appendChild(detailView);
       });
+      
+      masterPanel.appendChild(listGroup);
+      splitView.appendChild(masterPanel);
+      splitView.appendChild(detailPanel);
+      
+      // Insert the split view into the test cases pane
+      // First, make sure controls are at the top
+      const controls = testCasesPane.querySelector('.scenario-controls');
+      
+      // Clear the pane content but keep controls
+      if (controls) {
+        const tempControls = controls.cloneNode(true);
+        testCasesPane.innerHTML = '';
+        testCasesPane.appendChild(tempControls);
+      } else {
+        testCasesPane.innerHTML = '';
+      }
+      
+      // Add the split view
+      testCasesPane.appendChild(splitView);
 
       // Store the new test cases in backend session for persistence
       storeTestCasesInBackend(scenarios);
+      
+      // Reattach event handlers for the new buttons
+      attachTestCaseActionHandlers();
+    } else {
+      // If no scenarios, show placeholder text
+      testCasesPane.innerHTML = `
+        <div class="d-flex justify-content-end mb-2 scenario-controls gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-secondary action-btn copyAllBtn" title="Copy all test cases">
+            <i class="bi bi-clipboard"></i>
+            <span class="btn-text d-none d-md-inline ms-1">Copy All</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary action-btn manual-prompt-btn" title="Execute custom prompt">
+            <i class="bi bi-chat-square-text"></i>
+            <span class="btn-text d-none d-md-inline ms-1">Custom Prompt</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-success action-btn update-ticket-btn" title="Update ticket with test cases">
+            <i class="bi bi-upload"></i>
+            <span class="btn-text d-none d-md-inline ms-1">Update Ticket</span>
+          </button>
+        </div>
+        <div class="text-muted">No generated test cases yet. Click the pencil icon next to a test scenario to generate a test case.</div>
+      `;
     }
+  }
+
+  // Function to attach event listeners for test case action buttons
+  function attachTestCaseActionHandlers() {
+    // Remove any existing event listeners to avoid duplicates
+    document.removeEventListener('click', handleTestCaseActions);
+    
+    // Use event delegation for dynamically created buttons
+    document.addEventListener('click', handleTestCaseActions);
+  }
+
+  // Handler function for test case actions
+  function handleTestCaseActions(e) {
+    // Handle master list item clicks
+    if (e.target.classList.contains('list-group-item') && e.target.id && e.target.id.includes('test-case-') && e.target.id.includes('-list')) {
+      const testCaseIndex = e.target.getAttribute('data-test-case-index');
+      
+      // Remove active class from all list items
+      const allListItems = document.querySelectorAll('.test-case-master .list-group-item');
+      allListItems.forEach(item => item.classList.remove('active'));
+      
+      // Add active class to clicked item
+      e.target.classList.add('active');
+      
+      // Hide all detail views
+      const allDetailViews = document.querySelectorAll('.test-case-detail-content');
+      allDetailViews.forEach(view => view.classList.add('d-none'));
+      
+      // Show selected detail view
+      const selectedDetailView = document.getElementById(`test-case-${testCaseIndex}-detail`);
+      if (selectedDetailView) {
+        selectedDetailView.classList.remove('d-none');
+      }
+    }
+    
+    // Handle Generate Test Case button clicks
+    if (e.target.classList.contains('generate-test-case-btn') || e.target.closest('.generate-test-case-btn')) {
+      const button = e.target.classList.contains('generate-test-case-btn') ? e.target : e.target.closest('.generate-test-case-btn');
+      const testCaseIndex = button.getAttribute('data-test-case-index');
+      showStickyAlert(`Generate Test Case functionality for Test Case ${testCaseIndex} would be implemented here.`, 'info');
+    }
+    
+    // Handle Copy Test Case button clicks
+    if (e.target.classList.contains('copy-test-case-btn') || e.target.closest('.copy-test-case-btn')) {
+      const button = e.target.classList.contains('copy-test-case-btn') ? e.target : e.target.closest('.copy-test-case-btn');
+      const testCaseIndex = button.getAttribute('data-test-case-index');
+      
+      // Get the test case text
+      const detailView = document.getElementById(`test-case-${testCaseIndex}-detail`);
+      if (detailView) {
+        const testCaseText = detailView.querySelector('.test-case-text').textContent;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(testCaseText).then(() => {
+          showStickyAlert(`Test Case ${testCaseIndex} copied to clipboard!`, 'success');
+        }).catch(err => {
+          console.error('Failed to copy: ', err);
+          showStickyAlert('Failed to copy test case to clipboard.', 'danger');
+        });
+      }
+    }
+    
+    // Handle Create Ticket button clicks
+    if (e.target.classList.contains('create-ticket-btn') || e.target.closest('.create-ticket-btn')) {
+      const button = e.target.classList.contains('create-ticket-btn') ? e.target : e.target.closest('.create-ticket-btn');
+      const testCaseIndex = button.getAttribute('data-test-case-index');
+      showStickyAlert(`Create Ticket functionality for Test Case ${testCaseIndex} would be implemented here.`, 'info');
+    }
+    
+    // Handle Add Notes button clicks - now opens modal dialog
+    if (e.target.classList.contains('add-notes-btn') || e.target.closest('.add-notes-btn')) {
+      const button = e.target.classList.contains('add-notes-btn') ? e.target : e.target.closest('.add-notes-btn');
+      const testCaseIndex = button.getAttribute('data-test-case-index');
+      
+      // Open notes modal
+      openNotesModal(testCaseIndex);
+    }
+  }
+
+  // Function to open the notes modal dialog
+  function openNotesModal(testCaseIndex) {
+    // Get existing notes if any
+    const notesTextarea = document.getElementById(`additional-notes-${testCaseIndex}`);
+    const currentNotes = notesTextarea ? notesTextarea.value : '';
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('notesModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'notesModal';
+      modal.className = 'modal-notes';
+      modal.innerHTML = `
+        <div class="modal-notes-content">
+          <div class="modal-notes-header">
+            <h5>Add Notes for Test Case ${testCaseIndex}</h5>
+            <button class="modal-notes-close">&times;</button>
+          </div>
+          <div class="modal-notes-body">
+            <textarea class="modal-notes-textarea" placeholder="Enter additional notes, test steps, or details here..."></textarea>
+          </div>
+          <div class="modal-notes-footer">
+            <button class="btn btn-sm btn-outline-secondary cancel-notes-btn">Cancel</button>
+            <button class="btn btn-sm btn-primary save-notes-btn">Save Notes</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Add event listeners for modal controls
+      modal.querySelector('.modal-notes-close').addEventListener('click', closeNotesModal);
+      modal.querySelector('.cancel-notes-btn').addEventListener('click', closeNotesModal);
+      modal.querySelector('.save-notes-btn').addEventListener('click', saveNotes);
+      
+      // Close modal when clicking outside
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          closeNotesModal();
+        }
+      });
+    }
+    
+    // Set current notes in textarea
+    modal.querySelector('.modal-notes-textarea').value = currentNotes;
+    
+    // Store current test case index in modal for save function
+    modal.setAttribute('data-test-case-index', testCaseIndex);
+    
+    // Show modal
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Focus textarea
+    modal.querySelector('.modal-notes-textarea').focus();
+  }
+
+  // Function to close the notes modal
+  function closeNotesModal() {
+    const modal = document.getElementById('notesModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  }
+
+  // Function to save notes from modal
+  function saveNotes() {
+    const modal = document.getElementById('notesModal');
+    if (!modal) return;
+    
+    const testCaseIndex = modal.getAttribute('data-test-case-index');
+    const notesText = modal.querySelector('.modal-notes-textarea').value;
+    
+    // Update the notes textarea in the detail view
+    const detailNotesTextarea = document.getElementById(`additional-notes-${testCaseIndex}`);
+    if (detailNotesTextarea) {
+      detailNotesTextarea.value = notesText;
+      showStickyAlert(`Notes saved for Test Case ${testCaseIndex}`, 'success');
+    }
+    
+    // Close modal
+    closeNotesModal();
   }
 
   // Function to store test cases in backend session for persistence
