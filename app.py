@@ -1330,4 +1330,4 @@ def store_test_cases():
         return jsonify({'success': False, 'error': 'Failed to store test cases.'}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
