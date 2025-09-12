@@ -599,12 +599,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add brief loading state
         const originalIcon = this.querySelector('i');
         const originalText = this.querySelector('.btn-text');
-        
+
         this.disabled = true;
         this.classList.add('loading');
         if (originalIcon) originalIcon.className = 'bi bi-hourglass-split spinner';
         if (originalText) originalText.textContent = 'Deselecting...';
-        
+
         fetch('/clear_selected', {
           method: 'POST',
           headers: {
@@ -653,7 +653,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Get description from the selected ticket - comprehensive logic for tabbed interface
         let description = '';
-        
+
         // Method 1: Try to get description from the description tab content
         const descriptionPane = selInfo.querySelector('#description-pane');
         if (descriptionPane) {
@@ -677,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
         }
-        
+
         // Method 2: Try to get description from the tab content directly
         if (!description.trim()) {
           const descriptionTabsContent = selInfo.querySelector('#descriptionTabsContentInner');
@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
         }
-        
+
         // Method 3: Try to get description from any .adf-desc element
         if (!description.trim()) {
           const adfDescElements = selInfo.querySelectorAll('.adf-desc');
@@ -709,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
         }
-        
+
         // Method 4: Try to get description from session data in the card header
         if (!description.trim()) {
           const cardHeader = selInfo.querySelector('.card-header');
@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
         }
-        
+
         if (!description.trim()) {
           selInfo.insertAdjacentHTML('beforeend', '<div class="alert alert-warning mt-2">No description found for this ticket. Please ensure the ticket has a description.</div>');
           return;
@@ -740,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const originalText = btn.querySelector('.btn-text');
         // Check if there are existing scenarios by looking for the generated test scenarios tab
         const hasExistingScenarios = !!document.getElementById('generated-test-scenarios-tab');
-        
+
         // Add loading state with spinner
         if (originalIcon) originalIcon.className = 'bi bi-hourglass-split spinner';
         if (originalText) {
@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', function () {
           btn.classList.remove('loading');
           if (originalIcon) originalIcon.className = 'bi bi-magic';
           if (originalText) originalText.textContent = 'Regenerate Test Scenarios';
-          
+
           const data = await res.json().catch(() => ({}));
 
           if (!res.ok || !data.scenarios) {
@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Create the generated test scenarios tab dynamically
             const tabList = document.getElementById('descriptionTabs');
             const tabContent = document.getElementById('descriptionTabsContentInner');
-            
+
             // Add tab to navigation if it doesn't exist
             if (!generatedTab && tabList) {
               const newTab = document.createElement('li');
@@ -872,14 +872,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const tab = new bootstrap.Tab(generatedTab);
             tab.show();
           }
-          
+
           // Filter out any introductory text that's not actually a test scenario
           const filteredScenarios = data.scenarios.filter(scenario => {
             // Skip introductory text like "Here are concise, end-to-end test scenarios..."
-            return !scenario.toLowerCase().includes("here are") && 
+            return !scenario.toLowerCase().includes("here are") &&
                    !scenario.toLowerCase().includes("test scenario");
           });
-          
+
           // Clear existing scenarios and ensure the list exists
           if (testScenariosList) {
             testScenariosList.innerHTML = '';
@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasExistingScenarios = !!document.getElementById('generated-test-scenarios-tab');
             originalText.textContent = hasExistingScenarios ? 'Regenerate Test Scenarios' : 'Generate Test Scenarios';
           }
-          
+
           selInfo.insertAdjacentHTML('beforeend', `<div class="alert alert-danger mt-2">Network error: ${err.message}</div>`);
         });
       })
